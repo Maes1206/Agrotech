@@ -1,5 +1,25 @@
 // Template-specific interactions for index-6.html
 
+function updateRoundFundingProgress(current, target, units) {
+    var timer = document.querySelector('.team-five__round-timer');
+    if (!timer) return;
+
+    var progressEl = timer.querySelector('.team-five__round-progress');
+    var fillEl = timer.querySelector('.team-five__round-progress-fill');
+    var contextEl = timer.querySelector('.team-five__round-context');
+    if (!progressEl || !fillEl || !contextEl) return;
+
+    var safeTarget = Number(target) || 0;
+    var safeCurrent = Math.max(0, Number(current) || 0);
+    var safeUnits = Number(units) || Number(timer.getAttribute('data-tokenized-units')) || 0;
+    var percentage = safeTarget > 0 ? Math.min(100, Math.round((safeCurrent / safeTarget) * 100)) : 0;
+
+    fillEl.style.width = percentage + '%';
+    progressEl.setAttribute('aria-valuenow', String(percentage));
+    progressEl.setAttribute('aria-label', 'Ronda financiada al ' + percentage + ' por ciento');
+    contextEl.innerHTML = 'Ronda activa &middot; ' + safeUnits + ' unidades tokenizadas &middot; ' + Math.round(safeCurrent) + ' de ' + Math.round(safeTarget) + ' millones COP';
+}
+
 // Simula una variacion lenta tipo ticker financiero sobre el capital levantado.
 (function () {
     var valueEl = document.getElementById('raised-amount');
@@ -14,6 +34,8 @@
     function formatCurrency(value) {
         return Math.round(value).toLocaleString('es-CO');
     }
+
+    updateRoundFundingProgress(current, target, 128);
 
     function tick() {
         var step = (Math.random() * 2.6) + 0.4;
@@ -35,6 +57,7 @@
         current = next;
 
         valueEl.textContent = formatCurrency(current) + ' / ' + formatCurrency(target) + ' millones COP';
+        updateRoundFundingProgress(current, target, 128);
         valueEl.classList.remove('is-up', 'is-down');
         deltaEl.classList.remove('up', 'down');
 
@@ -61,11 +84,10 @@
     if (!timer) return;
 
     var valueEl = timer.querySelector('.team-five__round-value');
-    var deadline = timer.getAttribute('data-round-deadline');
-    if (!valueEl || !deadline) return;
+    if (!valueEl) return;
 
-    var target = new Date(deadline).getTime();
-    if (isNaN(target)) return;
+    var roundDays = Number(timer.getAttribute('data-round-days')) || 7;
+    var target = Date.now() + (roundDays * 24 * 60 * 60 * 1000);
 
     function renderCountdown() {
         var now = Date.now();
