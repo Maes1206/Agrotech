@@ -1,0 +1,443 @@
+{% load static humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>{{ asset.name }} | AgroTech</title>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+<link href="{% static 'css/bootstrap.css' %}" rel="stylesheet">
+<link href="{% static 'css/style.css' %}" rel="stylesheet">
+<link href="{% static 'css/responsive.css' %}" rel="stylesheet">
+<link href="{% static 'css/asset-detail.css' %}" rel="stylesheet">
+<link href="{% static 'css/agrotech-investment.css' %}" rel="stylesheet">
+</head>
+<body class="asset-detail-page">
+  <div class="asset-detail-shell">
+    <div class="auto-container" data-investment-root data-token-price="{{ agrotech_token_price_cop }}" data-wallet-tokens="{% if wallet_snapshot %}{{ wallet_snapshot.tokens_available }}{% else %}0{% endif %}" data-investor-name="{% if request.user.is_authenticated %}{{ request.user.get_full_name|default:request.user.username }}{% else %}Invitado{% endif %}" data-portfolio-url="{% url 'investor_panel' %}" data-transactions-target="detail-transactions-body">
+      <div class="mb-4">
+        <a href="{% url 'home' %}" class="asset-detail-back-link"><span>Volver al inicio</span></a>
+      </div>
+
+      {% if wallet_snapshot %}
+      <section class="agt-wallet-summary agt-wallet-summary--detail" data-wallet-summary>
+        <div class="agt-wallet-summary__hero">
+          <span class="agt-wallet-summary__eyebrow">Wallet AGT</span>
+          <h3>Tu capacidad de inversión está lista para este activo</h3>
+          <p>Recibirás un certificado digital de participación, trazabilidad actualizada del activo y confirmación en blockchain al cerrar la operación.</p>
+        </div>
+        <div class="agt-wallet-summary__stats">
+          <article class="agt-stat-card">
+            <span>Tokens AGT disponibles</span>
+            <strong data-wallet-tokens>{{ wallet_snapshot.tokens_available }}</strong>
+            <small>Saldo listo para invertir</small>
+          </article>
+          <article class="agt-stat-card">
+            <span>Disponible para invertir</span>
+            <strong>$<span data-wallet-equivalent>{{ wallet_snapshot.equivalent_cop|floatformat:0|intcomma }}</span> COP</strong>
+            <small>Equivalente COP del wallet</small>
+          </article>
+          <article class="agt-stat-card">
+            <span>Activos en portafolio</span>
+            <strong data-wallet-assets>{{ wallet_snapshot.portfolio_assets }}</strong>
+            <small>Posiciones trazables</small>
+          </article>
+          <article class="agt-stat-card">
+            <span>Inversión total</span>
+            <strong>$<span data-wallet-total-invested>{{ wallet_snapshot.total_invested|floatformat:0|intcomma }}</span> COP</strong>
+            <small>Acumulado histórico</small>
+          </article>
+          <article class="agt-stat-card">
+            <span>Rendimiento estimado</span>
+            <strong><span data-wallet-yield>{{ wallet_snapshot.estimated_return_pct|floatformat:2 }}</span>%</strong>
+            <small>Promedio del portafolio</small>
+          </article>
+        </div>
+      </section>
+      {% endif %}
+
+      <div class="asset-detail-card">
+        <div class="row clearfix">
+          <div class="col-lg-6 col-md-12 col-sm-12">
+            <div class="asset-detail-media">
+              <img src="{% static asset_image_path %}" alt="{{ asset.name }}">
+            </div>
+          </div>
+          <div class="col-lg-6 col-md-12 col-sm-12">
+            <div class="asset-detail-content" data-asset-detail-panel data-asset-code="{{ asset.code }}">
+              <span class="asset-detail-kicker">
+                {% if asset.asset_type == "lot" %}Lote activo{% else %}Animal individual{% endif %}
+              </span>
+              <h1 class="asset-detail-title">{{ asset.name }}</h1>
+              <p class="asset-detail-lead">{{ asset.description|default:"Activo biologico tokenizado para la demo AgroTech, con trazabilidad operativa, seguimiento productivo y valorizacion proyectada." }}</p>
+              <div class="asset-detail-pills">
+                <span>{{ asset.code }}</span>
+                <span>{{ asset.category.name }}</span>
+                <span>{{ asset.farm.name }}</span>
+                <span>{{ asset.producer.name }}</span>
+                <span data-detail-status-label>Estado: {{ asset.get_status_display }}</span>
+              </div>
+
+              <div class="agt-detail-funding">
+                <div class="agt-detail-funding__head">
+                  <span>Financiación del activo</span>
+                  <strong data-detail-progress-value>{{ asset_snapshot.progress_percent }}%</strong>
+                </div>
+                <div class="agt-detail-funding__bar">
+                  <span data-detail-progress-bar style="width: {{ asset_snapshot.progress_percent }}%;"></span>
+                </div>
+                <div class="agt-detail-funding__meta">
+                  <span data-detail-progress-copy>{{ asset_snapshot.tokens_sold }} / {{ asset_snapshot.total_tokens }} tokens vendidos</span>
+                  <span data-detail-availability-copy>{{ asset_snapshot.tokens_available }} tokens restantes</span>
+                </div>
+                <div class="agt-card-stats agt-card-stats--detail">
+                  <div>
+                    <span>Capital levantado</span>
+                    <strong data-detail-capital-raised>${{ asset_snapshot.capital_raised|floatformat:0|intcomma }}</strong>
+                  </div>
+                  <div>
+                    <span>Capital restante</span>
+                    <strong data-detail-capital-remaining>${{ asset_snapshot.capital_remaining|floatformat:0|intcomma }}</strong>
+                  </div>
+                  <div>
+                    <span>Participantes</span>
+                    <strong data-detail-participants>{{ asset_snapshot.participants_estimate }}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {% if request.user.is_authenticated %}
+              <div class="asset-detail-actions">
+                <button
+                  type="button"
+                  class="theme-btn btn-style-twelve"
+                  data-open-investment-modal
+                  data-asset-code="{{ asset.code }}"
+                  data-asset-name="{{ asset.name }}"
+                  data-asset-type="{% if asset.asset_type == 'lot' %}Lote{% else %}Individual{% endif %}"
+                  data-asset-category="{{ asset.category.name }}"
+                  data-asset-producer="{{ asset.producer.name }}"
+                  data-asset-farm="{{ asset.farm.name }}"
+                  data-asset-location="{{ asset.farm.municipality }}, {{ asset.farm.department }}"
+                  data-asset-weight="{{ asset.current_weight }} kg"
+                  data-asset-projected-value="${{ asset.projected_value|floatformat:0|intcomma }} COP"
+                  data-asset-return="{{ asset.estimated_return_pct|floatformat:2 }}%"
+                  data-asset-tokens-available="{{ asset_snapshot.tokens_available }}"
+                  data-asset-token-price="{{ asset.tokenization.token_price|floatformat:0 }}"
+                  data-asset-holding="{% if user_position %}{{ user_position.holding_quantity }}{% else %}0{% endif %}"
+                  data-asset-total-invested="{% if user_position %}${{ user_position.total_invested|floatformat:0|intcomma }} COP{% else %}$0 COP{% endif %}"
+                  data-asset-start-date="{{ asset.start_date }}"
+                  data-asset-sale-date="{{ asset.estimated_sale_date }}"
+                  data-asset-status="{{ asset.get_status_display }}"
+                  data-asset-validated="{% if user_position and user_position.holding_quantity > 0 %}true{% else %}false{% endif %}"
+                  data-asset-image="{% static asset_image_path %}"
+                  data-total-tokens="{{ asset_snapshot.total_tokens }}"
+                  data-tokens-sold="{{ asset_snapshot.tokens_sold }}"
+                  data-capital-raised="{{ asset_snapshot.capital_raised|floatformat:0 }}"
+                  data-capital-remaining="{{ asset_snapshot.capital_remaining|floatformat:0 }}"
+                  data-participants-estimate="{{ asset_snapshot.participants_estimate }}"
+                  data-urgency-label="{{ asset_snapshot.urgency_label }}"
+                  data-urgency-tone="{{ asset_snapshot.urgency_tone }}"
+                  data-estimated-return="{{ asset.estimated_return_pct|floatformat:2 }}"
+                  data-invest-endpoint="{% url 'invest_asset_tokens' asset.code %}"
+                >
+                  <span class="txt">Invertir con tokens AGT</span>
+                </button>
+                <a href="{% url 'investor_panel' %}?asset={{ asset.code }}" class="theme-btn btn-style-eight"><span class="txt">Ver en panel del inversionista</span></a>
+              </div>
+              {% else %}
+              <div class="asset-detail-actions">
+                <a href="{% url 'home' %}#contact-section" class="theme-btn btn-style-twelve"><span class="txt">Solicitar participación</span></a>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row clearfix mt-4">
+        <div class="col-lg-7 col-md-12 col-sm-12">
+          <div class="asset-detail-metrics">
+            <h4>Indicadores del activo</h4>
+            <div class="asset-detail-grid">
+              <div>
+                <span>Peso inicial</span>
+                <strong>{{ asset.initial_weight }} kg</strong>
+              </div>
+              <div>
+                <span>Peso actual</span>
+                <strong>{{ asset.current_weight }} kg</strong>
+              </div>
+              <div>
+                <span>Valor inicial</span>
+                <strong>${{ asset.initial_value|floatformat:0|intcomma }}</strong>
+              </div>
+              <div>
+                <span>Valor proyectado</span>
+                <strong>${{ asset.projected_value|floatformat:0|intcomma }}</strong>
+              </div>
+              <div>
+                <span>Rentabilidad estimada</span>
+                <strong>{{ asset.estimated_return_pct|floatformat:2 }}%</strong>
+              </div>
+              <div>
+                <span>Unidades disponibles</span>
+                <strong data-detail-asset-units>{{ asset_snapshot.tokens_available }} / {{ asset_snapshot.total_tokens }}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-5 col-md-12 col-sm-12">
+          <div class="asset-detail-side">
+            <h4>Ficha operativa</h4>
+            <ul class="asset-detail-list">
+              <li><span>Inicio del ciclo</span><strong>{{ asset.start_date }}</strong></li>
+              <li><span>Venta estimada</span><strong>{{ asset.estimated_sale_date }}</strong></li>
+              <li><span>Productor</span><strong>{{ asset.producer.name }}</strong></li>
+              <li><span>Finca</span><strong>{{ asset.farm.name }}</strong></li>
+              <li><span>Ubicación</span><strong>{{ asset.farm.municipality }}, {{ asset.farm.department }}</strong></li>
+              <li><span>Categoría</span><strong>{{ asset.category.name }}</strong></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="row clearfix mt-4">
+        <div class="col-lg-6 col-md-12 col-sm-12">
+          <div class="agt-contract-card">
+            <div class="agt-contract-card__head">
+              <div>
+                <span class="agt-contract-card__eyebrow">Tu posición en este activo</span>
+                <h4>Posición del inversionista</h4>
+              </div>
+              <span class="agt-status-pill {% if user_position and user_position.holding_quantity %}is-confirmed{% endif %}">
+                {% if user_position and user_position.holding_quantity %}Contrato activo{% else %}Sin posición registrada{% endif %}
+              </span>
+            </div>
+            {% if user_position and user_position.holding_quantity %}
+            <div class="agt-contract-card__grid">
+              <div><span>Tokens adquiridos</span><strong data-detail-position-tokens>{{ user_position.holding_quantity }}</strong></div>
+              <div><span>Participación del lote</span><strong data-detail-position-participation>{{ user_position.user_participation_pct|floatformat:2 }}%</strong></div>
+              <div><span>Capital invertido</span><strong data-detail-position-total>${{ user_position.total_invested|floatformat:0|intcomma }} COP</strong></div>
+              <div><span>Estado</span><strong>Activo</strong></div>
+            </div>
+            <p class="agt-contract-card__note">Tu posición quedará reflejada en el portafolio AgroTech y actualizada automáticamente tras cada operación confirmada.</p>
+            {% else %}
+            <p class="agt-contract-card__placeholder">Aún no tienes participación digital en este activo. Puedes invertir con tokens AGT desde este mismo panel.</p>
+            <div class="agt-contract-card__grid agt-contract-card__grid--placeholder">
+              <div><span>Tokens adquiridos</span><strong data-detail-position-tokens>0</strong></div>
+              <div><span>Participación del lote</span><strong data-detail-position-participation>0.00%</strong></div>
+              <div><span>Capital invertido</span><strong data-detail-position-total>$0 COP</strong></div>
+              <div><span>Estado</span><strong>Sin contrato</strong></div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        <div class="col-lg-6 col-md-12 col-sm-12">
+          <div class="agt-contract-card" data-blockchain-panel data-asset-code="{{ asset.code }}">
+            <div class="agt-contract-card__head">
+              <div>
+                <span class="agt-contract-card__eyebrow">Registro blockchain</span>
+                <h4>Trazabilidad del contrato</h4>
+              </div>
+              <span class="agt-status-pill {% if latest_blockchain_record %}is-confirmed{% endif %}" data-contract-status>
+                {% if latest_blockchain_record %}Confirmado en blockchain{% else %}Pendiente de emisión{% endif %}
+              </span>
+            </div>
+            <div class="agt-contract-card__grid">
+              <div><span>Contract ID</span><strong data-contract-id>{% if latest_contract %}{{ latest_contract.contract_id }}{% else %}-{% endif %}</strong></div>
+              <div><span>TX Hash</span><strong data-contract-hash>{% if latest_blockchain_record %}{{ latest_blockchain_record.tx_hash }}{% else %}-{% endif %}</strong></div>
+              <div><span>Block ID</span><strong data-contract-block>{% if latest_blockchain_record %}{{ latest_blockchain_record.block_id }}{% else %}-{% endif %}</strong></div>
+              <div><span>Timestamp</span><strong data-contract-issued>{% if latest_contract %}{{ latest_contract.issued_at|date:"Y-m-d H:i:s" }}{% else %}-{% endif %}</strong></div>
+            </div>
+            <p class="agt-contract-card__note" data-contract-note>
+              {% if latest_blockchain_record %}
+              La operación fue registrada mediante hash en blockchain y el certificado digital de participación ya se encuentra activo.
+              {% else %}
+              Al confirmar una inversión válida, AgroTech generará el contrato digital de copropiedad y publicará el hash de la operación.
+              {% endif %}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="row clearfix mt-4">
+        <div class="col-lg-6 col-md-12 col-sm-12">
+          <div class="agt-contract-card">
+            <div class="agt-contract-card__head">
+              <div>
+                <span class="agt-contract-card__eyebrow">Movimientos del activo</span>
+                <h4>Historial de inversión</h4>
+              </div>
+            </div>
+            <div class="agt-contract-list" id="detail-transactions-body">
+              {% for tx in asset_transactions %}
+              <article class="agt-contract-list__item">
+                <div>
+                  <strong>{{ tx.user.get_full_name|default:tx.user.username }}</strong>
+                  <span>{{ tx.created_at|date:"Y-m-d H:i" }}</span>
+                </div>
+                <div>
+                  <strong>{{ tx.quantity }} tokens</strong>
+                  <span>${{ tx.total_amount|floatformat:0|intcomma }} COP</span>
+                </div>
+              </article>
+              {% empty %}
+              <p class="agt-contract-card__placeholder">Todavía no hay movimientos registrados sobre este activo.</p>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-6 col-md-12 col-sm-12">
+          <div class="agt-contract-card">
+            <div class="agt-contract-card__head">
+              <div>
+                <span class="agt-contract-card__eyebrow">Trazabilidad operativa</span>
+                <h4>Eventos del activo</h4>
+              </div>
+            </div>
+            <div class="agt-contract-list">
+              {% for status in status_history %}
+              <article class="agt-contract-list__item">
+                <div>
+                  <strong>{{ status.get_new_status_display }}</strong>
+                  <span>{{ status.changed_at|date:"Y-m-d H:i" }}</span>
+                </div>
+                <div>
+                  <strong>{% if status.changed_by %}{{ status.changed_by.get_full_name|default:status.changed_by.username }}{% else %}Sistema{% endif %}</strong>
+                  <span>{{ status.notes|default:"Actualización de trazabilidad operativa." }}</span>
+                </div>
+              </article>
+              {% empty %}
+              <p class="agt-contract-card__placeholder">No hay eventos operativos adicionales para este activo.</p>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {% if related_assets %}
+      <div class="asset-detail-related">
+        <h3>Otras oportunidades activas</h3>
+        <div class="row clearfix">
+          {% for item in related_assets %}
+          <div class="col-lg-4 col-md-6 col-sm-12">
+            <div class="asset-detail-related-card">
+              <img src="{% static item.image_path %}" alt="{{ item.asset.name }}">
+              <div class="asset-detail-related-card-body">
+                <h5>{{ item.asset.name }}</h5>
+                <p>{{ item.asset.available_units }} unidades disponibles · {{ item.asset.estimated_return_pct|floatformat:1 }}% estimado</p>
+                <a href="{% url 'asset_detail' item.asset.code %}">Ver detalle</a>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if request.user.is_authenticated %}
+  <div class="agt-investment-modal" id="agt-investment-modal" aria-hidden="true">
+    <div class="agt-investment-modal__backdrop" data-close-investment-modal></div>
+    <div class="agt-investment-sheet" role="dialog" aria-modal="true" aria-labelledby="agt-investment-title">
+      <button type="button" class="agt-investment-sheet__close" data-close-investment-modal aria-label="Cerrar flujo de inversión">&times;</button>
+      <div class="agt-investment-state is-active" data-invest-state="form">
+        <div class="agt-investment-layout">
+          <aside class="agt-investment-aside">
+            <span class="agt-investment-aside__eyebrow">Tokenización del activo</span>
+            <h4 id="agt-investment-title" data-modal-asset-name>Activo AgroTech</h4>
+            <p data-modal-asset-copy>Tu inversión quedará respaldada por un contrato digital de copropiedad y un registro hash en blockchain.</p>
+            <div class="agt-investment-media">
+              <img src="" alt="" data-modal-asset-image>
+            </div>
+            <div class="agt-investment-tags">
+              <span data-modal-asset-code>-</span>
+              <span data-modal-asset-status>-</span>
+              <span data-modal-asset-urgency>-</span>
+            </div>
+            <div class="agt-investment-summary-grid">
+              <div><span>Precio por token</span><strong data-modal-token-price>$0 COP</strong></div>
+              <div><span>Wallet AGT</span><strong><span data-modal-wallet-tokens>0</span> tokens</strong></div>
+              <div><span>Tokens del activo</span><strong><span data-modal-asset-tokens>0</span> disponibles</strong></div>
+              <div><span>Participantes</span><strong data-modal-participants>0</strong></div>
+            </div>
+          </aside>
+          <div class="agt-investment-main">
+            <div class="agt-investment-main__head">
+              <div>
+                <span class="agt-investment-main__eyebrow">Adquiere participación digital en este activo</span>
+                <h5>Configura tu inversión AGT</h5>
+              </div>
+              <span class="agt-status-pill" data-modal-asset-badge>Disponible</span>
+            </div>
+            <div class="agt-investment-form-grid">
+              <label class="agt-field">
+                <span>Cantidad de tokens AGT</span>
+                <input type="number" min="1" step="1" value="1" data-invest-quantity-input>
+              </label>
+              <div class="agt-slider-wrap">
+                <input type="range" min="1" step="1" value="1" data-invest-quantity-slider>
+              </div>
+            </div>
+            <div class="agt-inline-alert" data-invest-validation hidden></div>
+            <div class="agt-investment-kpis">
+              <article><span>Total equivalente</span><strong data-invest-total-cop>$0 COP</strong></article>
+              <article><span>Participación adquirida</span><strong data-invest-participation>0%</strong></article>
+              <article><span>Rentabilidad estimada</span><strong data-invest-estimated-return>0%</strong></article>
+              <article><span>Saldo restante AGT</span><strong data-invest-remaining-wallet>0 tokens</strong></article>
+            </div>
+            <div class="agt-investment-disclaimer">
+              La operación será registrada mediante hash en blockchain. Recibirás un certificado digital de participación y la trazabilidad del activo quedará actualizada en tiempo real.
+            </div>
+            <div class="agt-investment-actions">
+              <button type="button" class="theme-btn btn-style-eight" data-close-investment-modal><span class="txt">Cancelar</span></button>
+              <button type="button" class="theme-btn btn-style-twelve" data-confirm-investment><span class="txt">Confirmar inversión</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="agt-investment-state" data-invest-state="processing">
+        <div class="agt-processing">
+          <span class="agt-investment-aside__eyebrow">Trazabilidad de la inversión</span>
+          <h4>Ejecutando operación AGT</h4>
+          <p>Simulación académica de blockchain con validación de saldo, contrato digital de copropiedad y certificado de participación.</p>
+          <div class="agt-stepper" data-stepper></div>
+        </div>
+      </div>
+
+      <div class="agt-investment-state" data-invest-state="certificate">
+        <div class="agt-certificate">
+          <span class="agt-investment-aside__eyebrow">Certificado digital de participación</span>
+          <h4>Adquisición confirmada en blockchain</h4>
+          <p>Tu posición ya forma parte del portafolio AgroTech y quedó vinculada a un contrato digital de copropiedad.</p>
+          <div class="agt-certificate__grid">
+            <div><span>Inversionista</span><strong data-certificate-investor>-</strong></div>
+            <div><span>Activo</span><strong data-certificate-asset>-</strong></div>
+            <div><span>Código del lote</span><strong data-certificate-code>-</strong></div>
+            <div><span>Tokens adquiridos</span><strong data-certificate-tokens>-</strong></div>
+            <div><span>Participación</span><strong data-certificate-participation>-</strong></div>
+            <div><span>Inversión COP</span><strong data-certificate-total>-</strong></div>
+            <div><span>Rentabilidad estimada</span><strong data-certificate-return>-</strong></div>
+            <div><span>Emitido</span><strong data-certificate-issued>-</strong></div>
+            <div><span>TX Hash</span><strong data-certificate-hash>-</strong></div>
+            <div><span>Contract ID</span><strong data-certificate-contract>-</strong></div>
+            <div><span>Estado del contrato</span><strong data-certificate-status>-</strong></div>
+            <div><span>Validación</span><strong data-certificate-validation>-</strong></div>
+          </div>
+          <div class="agt-certificate__actions">
+            <button type="button" class="theme-btn btn-style-eight" data-view-contract><span class="txt">Ver contrato digital</span></button>
+            <a href="{% url 'investor_panel' %}?asset={{ asset.code }}" class="theme-btn btn-style-twelve"><span class="txt">Ver en portafolio</span></a>
+            <button type="button" class="agt-inline-link" data-close-investment-modal>Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <script src="{% static 'js/agrotech-investment.js' %}"></script>
+</body>
+</html>

@@ -17,8 +17,10 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 
+from landing.views import home
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('landing.urls')),
-    path('index.html', include('landing.urls')),
+    path('index.html', home, name='index_html'),
 ]

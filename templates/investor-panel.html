@@ -1,0 +1,1517 @@
+{% load static humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Panel del Inversionista | AgroTech</title>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+<link href="{% static 'css/bootstrap.css' %}" rel="stylesheet">
+<link href="{% static 'css/style.css' %}" rel="stylesheet">
+<link href="{% static 'css/responsive.css' %}" rel="stylesheet">
+<link href="{% static 'css/investor-panel.css' %}" rel="stylesheet">
+<link href="{% static 'css/agrotech-investment.css' %}" rel="stylesheet">
+</head>
+<body>
+  <div class="investor-shell">
+    <div class="auto-container">
+      <div class="investor-header">
+        <div class="investor-header__title">
+          <h1>Panel del Inversionista</h1>
+          <p>Calcula cu&aacute;ntos tokens AgroTech puedes comprar con BTC, ejecuta la compra y revisa el estado actualizado de tu portafolio dentro de la demo.</p>
+        </div>
+        <a href="{% url 'home' %}" class="investor-header__back">Volver al inicio</a>
+      </div>
+
+      {% if messages %}
+        {% for message in messages %}
+        <div class="investor-alert {% if message.tags == 'success' %}investor-alert--success{% else %}investor-alert--error{% endif %}">
+          {{ message }}
+        </div>
+        {% endfor %}
+      {% endif %}
+
+      {% if wallet_snapshot %}
+      <section class="agt-wallet-summary" data-wallet-summary>
+        <div class="agt-wallet-summary__hero">
+          <span class="agt-wallet-summary__eyebrow">Wallet AGT</span>
+          <h3>Capital listo para asignar a oportunidades activas</h3>
+          <p>Adquiere participación digital en este activo. Tu inversión quedará respaldada por un contrato digital de copropiedad y un registro hash en blockchain.</p>
+        </div>
+        <div class="agt-wallet-summary__stats">
+          <article class="agt-stat-card">
+            <span>Tokens AGT disponibles</span>
+            <strong data-wallet-tokens>{{ wallet_snapshot.tokens_available }}</strong>
+            <small>Liquidez inmediata para nuevas posiciones</small>
+          </article>
+          <article class="agt-stat-card">
+            <span>Disponible para invertir</span>
+            <strong>$<span data-wallet-equivalent>{{ wallet_snapshot.equivalent_cop|floatformat:0|intcomma }}</span> COP</strong>
+            <small>Equivalente estimado del saldo AGT</small>
+          </article>
+          <article class="agt-stat-card">
+            <span>Activos en portafolio</span>
+            <strong data-wallet-assets>{{ wallet_snapshot.portfolio_assets }}</strong>
+            <small>Posiciones activas con trazabilidad</small>
+          </article>
+          <article class="agt-stat-card">
+            <span>Inversión total acumulada</span>
+            <strong>$<span data-wallet-total-invested>{{ wallet_snapshot.total_invested|floatformat:0|intcomma }}</span> COP</strong>
+            <small>Portafolio AgroTech consolidado</small>
+          </article>
+          <article class="agt-stat-card">
+            <span>Rendimiento estimado</span>
+            <strong><span data-wallet-yield>{{ wallet_snapshot.estimated_return_pct|floatformat:2 }}</span>%</strong>
+            <small>Promedio ponderado del portafolio</small>
+          </article>
+        </div>
+      </section>
+      {% endif %}
+
+      {% if selected_asset %}
+      <div class="investor-card">
+        <div class="investor-card-layout">
+          <div class="investor-card-main">
+            <span class="investor-card__eyebrow">Calculadora AgroTech</span>
+            <p>Calcula y compra tokens AGT dentro de la demo. Cada token AgroTech mantiene un precio fijo de {{ agrotech_token_price_cop|floatformat:0|intcomma }} COP.</p>
+
+            <form
+              method="post"
+              id="investor-panel-form"
+              data-btc-usd-rate="{{ demo_btc_usd_rate }}"
+              data-btc-cop-rate="{{ demo_btc_cop_rate }}"
+              data-token-price-cop="{{ agrotech_token_price_cop }}"
+              data-available-tokens="{{ selected_asset.tokens_available }}"
+            >
+              {% csrf_token %}
+              <input type="hidden" name="panel_action" id="investor-panel-action" value="">
+              <input type="hidden" name="selected_asset_code" id="selected-asset-code-input" value="{{ selected_asset_code }}">
+              <div class="investor-token-title">
+                <h3>Token AgroTech</h3>
+              </div>
+              <div class="investor-form-grid">
+                <div class="investor-field">
+                  <label for="id_btc_amount">Monto en BTC</label>
+                  {{ panel_form.btc_amount }}
+                  <div class="investor-field__hint" id="btc-live-rate">≈ 1 BTC = ${{ demo_btc_usd_rate|floatformat:0|intcomma }} USD</div>
+                  <div class="investor-field__slider-wrap">
+                    <input
+                      type="range"
+                      id="btc-amount-slider"
+                      class="investor-field__slider"
+                      min="0"
+                      max="1"
+                      step="0.000001"
+                      value="{{ panel_form.btc_amount.value|default:'0.050000' }}"
+                    >
+                  </div>
+                  <p class="investor-field__message" id="btc-live-message">Estas comprando aproximadamente {% if calculation %}{{ calculation.estimated_tokens }}{% else %}0{% endif %} tokens AGT.</p>
+                  {% if panel_form.btc_amount.errors %}
+                  <div class="investor-alert investor-alert--error" style="margin-top:12px; margin-bottom:0;">
+                    {{ panel_form.btc_amount.errors|join:", " }}
+                  </div>
+                  {% endif %}
+                </div>
+                <div class="investor-metric investor-metric--tokens investor-metric--primary" id="calc-tokens-metric">
+                  <span>Tokens AGT estimados</span>
+                  <div class="investor-token-metric__value">
+                    <strong id="calc-tokens-value" data-value="{% if calculation %}{{ calculation.estimated_tokens }}{% else %}0{% endif %}">{% if calculation %}{{ calculation.estimated_tokens }}{% else %}0{% endif %}</strong>
+                    <span class="investor-token-metric__symbol">
+                      <img src="{% static 'images/resource/f-image-7.png' %}" alt="Moneda AgroTech" class="investor-token-metric__coin">
+                      <b>AGT</b>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="investor-metrics">
+                <div class="investor-metric" id="calc-usd-metric">
+                  <span>Equivalente en USD</span>
+                  <strong id="calc-usd-value">${% if calculation %}{{ calculation.equivalent_usd|floatformat:2 }}{% else %}0.00{% endif %} USD</strong>
+                </div>
+                <div class="investor-metric" id="calc-cop-metric">
+                  <span>Equivalente en COP</span>
+                  <strong id="calc-cop-value">${% if calculation %}{{ calculation.equivalent_cop|floatformat:0|intcomma }}{% else %}0{% endif %} COP</strong>
+                </div>
+              </div>
+
+              <div class="investor-actions">
+                <button class="theme-btn btn-style-twelve" type="button" id="open-checkout-btn" {% if not calculation or not calculation.can_buy %}disabled{% endif %}>
+                  <span class="txt">Buy Tokens</span>
+                </button>
+              </div>
+              <div
+                class="investor-alert investor-alert--error{% if not calculation or calculation.estimated_tokens <= selected_asset.tokens_available %} is-hidden{% endif %}"
+                id="investor-live-error"
+                style="margin-top:14px; margin-bottom:0;"
+              >
+                El monto estimado supera la disponibilidad actual. Solo hay {{ selected_asset.tokens_available }} tokens AGT disponibles para compra.
+              </div>
+            </form>
+
+            <div class="investor-chips">
+              <span>1 BTC = ${{ demo_btc_usd_rate|floatformat:2 }} USD</span>
+              <span>1 BTC = ${{ demo_btc_cop_rate|floatformat:0|intcomma }} COP</span>
+              <span id="selected-asset-tokens-chip">{{ selected_asset.tokens_available }} tokens disponibles</span>
+            </div>
+          </div>
+
+          <aside class="investor-wallet-panel" aria-label="Wallet AgroTech">
+            <div class="investor-wallet-panel__head">
+              <span>Wallet visual</span>
+              <h4>Metodos de pago vinculados</h4>
+              <p>Consulta los medios de pago asociados al inversionista y visualiza el balance total disponible dentro del entorno demo AgroTech.</p>
+            </div>
+
+            <div class="app-container">
+              <div class="wallet wallet--empty" id="linked-wallet" data-storage-key="agrotechLinkedCard:{{ request.user.id }}">
+                <div class="wallet-back"></div>
+                <div class="wallet-empty-state" id="wallet-empty-state">
+                  <strong>Sin tarjeta vinculada</strong>
+                  <span>Agrega una tarjeta en el checkout para verla aqu&iacute; dentro de tu wallet.</span>
+                </div>
+
+                <div class="wallet-card bancolombia stripe" id="wallet-bank-card">
+                  <div class="wallet-card-inner">
+                    <div class="wallet-card-top">
+                      <div class="wallet-bank-logo">
+                        Bancolombia
+                        <small>Credito</small>
+                      </div>
+                      <div class="chip"></div>
+                    </div>
+                    <div class="wallet-card-bottom">
+                      <div class="card-info">
+                        <span class="label">Titular</span><span class="value" id="wallet-card-holder">{{ holder_name|upper|truncatechars:18 }}</span>
+                      </div>
+                      <div class="card-number-wrapper">
+                        <span class="hidden-stars" id="wallet-card-hidden">**** 4242</span>
+                        <span class="card-number" id="wallet-card-number">**** **** **** 4242</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="pocket">
+                  <svg class="pocket-svg" viewBox="0 0 280 160" fill="none">
+                    <path d="M 0 20 C 0 10, 5 10, 10 10 C 20 10, 25 25, 40 25 L 240 25 C 255 25, 260 10, 270 10 C 275 10, 280 10, 280 20 L 280 120 C 280 155, 260 160, 240 160 L 40 160 C 20 160, 0 155, 0 120 Z" fill="#1e341e"></path>
+                    <path d="M 8 22 C 8 16, 12 16, 15 16 C 23 16, 27 29, 40 29 L 240 29 C 253 29, 257 16, 265 16 C 268 16, 272 16, 272 22 L 272 120 C 272 150, 255 152, 240 152 L 40 152 C 25 152, 8 152, 8 120 Z" stroke="#3d5635" stroke-width="1.5" stroke-dasharray="6 4"></path>
+                  </svg>
+                  <div class="pocket-content">
+                    <div style="position: relative; height: 24px; width: 100%;">
+                      <div class="balance-stars">******</div>
+                      <div class="balance-real">${{ portfolio_balance_cop|floatformat:0|intcomma }}</div>
+                    </div>
+                    <div style="color: #698263; font-size: 12px; font-weight: 500;">
+                      Total Balance
+                    </div>
+                    <div class="eye-icon-wrapper">
+                      <svg class="eye-icon eye-slash" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <line x1="3" y1="3" x2="21" y2="21"></line>
+                      </svg>
+                      <svg class="eye-icon eye-open" style="opacity: 0;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <div class="row clearfix mt-4">
+        <div class="col-lg-4 col-md-12 col-sm-12">
+          <div class="investor-summary-card">
+            <h4>Resumen de compra</h4>
+            {% if summary_asset %}
+            <ul class="investor-summary-list">
+              <li><span>Precio por token</span><strong>${{ summary_asset.token_price|floatformat:0|intcomma }} COP</strong></li>
+              <li><span>Mis tokens</span><strong>{% if summary_holding %}{{ summary_holding.quantity }}{% else %}0{% endif %}</strong></li>
+              <li><span>Tokens disponibles</span><strong>{{ summary_asset.tokens_available }}</strong></li>
+              <li><span>Ultima compra</span><strong>{{ latest_transaction.quantity }} tokens</strong></li>
+              <li><span>Total invertido</span><strong>${{ summary_total_invested|floatformat:0|intcomma }} COP</strong></li>
+            </ul>
+            {% else %}
+            <p class="investor-empty">Este resumen aparecer&aacute; cuando compres tokens de un activo dentro del panel.</p>
+            {% endif %}
+          </div>
+        </div>
+        <div class="col-lg-8 col-md-12 col-sm-12">
+          <div class="investor-table-card">
+            <h4>Balance de tokens</h4>
+            {% if portfolio %}
+            <ul class="investor-summary-list">
+              <li><span>Tokens AGT acumulados</span><strong>{{ portfolio_tokens }}</strong></li>
+              <li><span>Valor total del balance</span><strong>${{ portfolio_balance_cop|floatformat:0|intcomma }} COP</strong></li>
+              <li><span>Participaci&oacute;n actual</span><strong>{% if summary_holding %}{{ summary_holding.participation|floatformat:4 }}{% else %}0.0000{% endif %}</strong></li>
+              <li><span>Ultima actualizaci&oacute;n</span><strong>{% if latest_transaction %}{{ latest_transaction.created_at|date:"Y-m-d H:i" }}{% else %}-{% endif %}</strong></li>
+            </ul>
+            {% else %}
+            <p class="investor-empty">Aun no tienes tokens AGT comprados. Usa la calculadora y registra tu primera compra.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <section class="investor-asset-portfolio">
+        <div class="investor-asset-portfolio__head">
+          <div>
+            <h4 id="portfolio-panel-title">Validacion del portafolio del activo</h4>
+            <p id="portfolio-panel-copy">Este bloque se activa cuando completes la inversion final en el activo seleccionado y AgroTech valide tu posicion dentro del portafolio.</p>
+          </div>
+          <div class="investor-asset-portfolio__badge" id="portfolio-panel-badge">
+            {% if selected_asset_holding %}{{ selected_asset.asset.code }} validado{% else %}Pendiente de validacion{% endif %}
+          </div>
+        </div>
+        <div class="investor-asset-portfolio__grid{% if not selected_asset_holding %} is-hidden{% endif %}" id="portfolio-panel-grid">
+          <div class="investor-asset-portfolio__item">
+            <span>Activo</span>
+            <strong id="portfolio-asset-name">{{ selected_asset.asset.name }}</strong>
+          </div>
+          <div class="investor-asset-portfolio__item">
+            <span>Tipo</span>
+            <strong id="portfolio-asset-type">{% if selected_asset.asset.asset_type == "lot" %}Lote{% else %}Individual{% endif %}</strong>
+          </div>
+          <div class="investor-asset-portfolio__item">
+            <span>Categoria</span>
+            <strong id="portfolio-asset-category">{{ selected_asset.asset.category.name }}</strong>
+          </div>
+          <div class="investor-asset-portfolio__item">
+            <span>Productor</span>
+            <strong id="portfolio-asset-producer">{{ selected_asset.asset.producer.name }}</strong>
+          </div>
+          <div class="investor-asset-portfolio__item">
+            <span>Finca</span>
+            <strong id="portfolio-asset-farm">{{ selected_asset.asset.farm.name }}</strong>
+          </div>
+          <div class="investor-asset-portfolio__item">
+            <span>Ubicacion</span>
+            <strong id="portfolio-asset-location">{{ selected_asset.asset.farm.municipality }}, {{ selected_asset.asset.farm.department }}</strong>
+          </div>
+          <div class="investor-asset-portfolio__item">
+            <span>Peso actual</span>
+            <strong id="portfolio-asset-weight">{{ selected_asset.asset.current_weight }} kg</strong>
+          </div>
+          <div class="investor-asset-portfolio__item">
+            <span>Valor proyectado</span>
+            <strong id="portfolio-asset-projected-value">${{ selected_asset.asset.projected_value|floatformat:0|intcomma }} COP</strong>
+          </div>
+          <div class="investor-asset-portfolio__item">
+            <span>Rentabilidad estimada</span>
+            <strong id="portfolio-asset-return">{{ selected_asset.asset.estimated_return_pct|floatformat:1 }}%</strong>
+          </div>
+          <div class="investor-asset-portfolio__item">
+            <span>Tokens disponibles</span>
+            <strong id="portfolio-asset-tokens-available">{{ selected_asset.tokens_available }}</strong>
+          </div>
+          <div class="investor-asset-portfolio__item">
+            <span>Mis tokens en este activo</span>
+            <strong id="portfolio-asset-holding">{% if selected_asset_holding %}{{ selected_asset_holding.quantity }}{% else %}0{% endif %}</strong>
+          </div>
+          <div class="investor-asset-portfolio__item">
+            <span>Total invertido en este activo</span>
+            <strong id="portfolio-asset-total-invested">${{ selected_asset_total_invested|floatformat:0|intcomma }} COP</strong>
+          </div>
+          <div class="investor-asset-portfolio__item">
+            <span>Inicio del ciclo</span>
+            <strong id="portfolio-asset-start-date">{{ selected_asset.asset.start_date }}</strong>
+          </div>
+          <div class="investor-asset-portfolio__item">
+            <span>Venta estimada</span>
+            <strong id="portfolio-asset-sale-date">{{ selected_asset.asset.estimated_sale_date }}</strong>
+          </div>
+          <div class="investor-asset-portfolio__item">
+            <span>Estado</span>
+            <strong id="portfolio-asset-status">{{ selected_asset.asset.get_status_display }}</strong>
+          </div>
+        </div>
+        <div class="investor-asset-portfolio__pending{% if selected_asset_holding %} is-hidden{% endif %}" id="portfolio-panel-pending">
+          <div class="investor-asset-portfolio__pending-card">
+            <span>Activo seleccionado</span>
+            <strong id="portfolio-pending-asset">{{ selected_asset.asset.name }}</strong>
+          </div>
+          <div class="investor-asset-portfolio__pending-card">
+            <span>Estado del portafolio</span>
+            <strong id="portfolio-pending-status">Pendiente de validacion</strong>
+          </div>
+          <div class="investor-asset-portfolio__pending-card">
+            <span>Condicion de activacion</span>
+            <strong id="portfolio-pending-condition">Completa la inversion final para habilitar este portafolio.</strong>
+          </div>
+        </div>
+        <p class="investor-asset-portfolio__note{% if selected_asset_holding %} is-hidden{% endif %}" id="portfolio-pending-note">Cuando confirmes la compra de tokens en este activo, AgroTech validara tu posicion y mostrara aqui los datos completos del portafolio asociado.</p>
+      </section>
+
+      <section class="agt-contracts-section">
+        <div class="row clearfix">
+          <div class="col-lg-6 col-md-12 col-sm-12">
+            <div class="agt-contract-card" data-blockchain-panel data-asset-code="{{ selected_asset.asset.code }}">
+              <div class="agt-contract-card__head">
+                <div>
+                  <span class="agt-contract-card__eyebrow">Registro blockchain</span>
+                  <h4>Contrato digital del activo seleccionado</h4>
+                </div>
+                <span class="agt-status-pill {% if selected_blockchain_record %}is-confirmed{% endif %}" data-contract-status>
+                  {% if selected_blockchain_record %}Confirmado en blockchain{% else %}Pendiente de inversión{% endif %}
+                </span>
+              </div>
+              {% if selected_contract and selected_blockchain_record %}
+              <div class="agt-contract-card__grid">
+                <div><span>Contract ID</span><strong data-contract-id>{{ selected_contract.contract_id }}</strong></div>
+                <div><span>TX Hash</span><strong data-contract-hash>{{ selected_blockchain_record.tx_hash }}</strong></div>
+                <div><span>Block ID</span><strong data-contract-block>{{ selected_blockchain_record.block_id }}</strong></div>
+                <div><span>Emitido</span><strong data-contract-issued>{{ selected_contract.issued_at|date:"Y-m-d H:i:s" }}</strong></div>
+              </div>
+              <p class="agt-contract-card__note" data-contract-note>Tu inversión quedará reflejada en el portafolio AgroTech con certificado digital de participación y trazabilidad del lote en tiempo real.</p>
+              <a href="{% url 'blockchain_ledger' %}" class="agt-contract-card__cta">Ver blockchain</a>
+              {% else %}
+              <p class="agt-contract-card__placeholder" data-contract-note>Cuando confirmes una inversión válida, AgroTech emitirá un contrato digital de copropiedad, calculará su hash y registrará la operación en blockchain.</p>
+              <div class="agt-contract-card__grid agt-contract-card__grid--placeholder">
+                <div><span>Contract ID</span><strong data-contract-id>-</strong></div>
+                <div><span>TX Hash</span><strong data-contract-hash>-</strong></div>
+                <div><span>Block ID</span><strong data-contract-block>-</strong></div>
+                <div><span>Emitido</span><strong data-contract-issued>-</strong></div>
+              </div>
+              <a href="{% url 'blockchain_ledger' %}" class="agt-contract-card__cta">Ver blockchain</a>
+              {% endif %}
+            </div>
+          </div>
+          <div class="col-lg-6 col-md-12 col-sm-12">
+            <div class="agt-contract-card">
+              <div class="agt-contract-card__head">
+                <div>
+                  <span class="agt-contract-card__eyebrow">Certificados emitidos</span>
+                  <h4>Trazabilidad reciente del inversionista</h4>
+                </div>
+              </div>
+              <div class="agt-contract-list">
+                {% for contract in recent_contracts %}
+                <article class="agt-contract-list__item">
+                  <div>
+                    <strong>{{ contract.tokenized_asset.asset.name }}</strong>
+                    <span>{{ contract.contract_id }}</span>
+                  </div>
+                  <div>
+                    <strong>{{ contract.tokens_acquired }} AGT</strong>
+                    <span>{{ contract.issued_at|date:"Y-m-d H:i" }}</span>
+                  </div>
+                </article>
+                {% empty %}
+                <p class="agt-contract-card__placeholder">Aún no has emitido certificados digitales de participación.</p>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {% if opportunity_assets %}
+      <section class="investor-opportunities" data-investment-root data-token-price="{{ agrotech_token_price_cop }}" data-wallet-tokens="{{ wallet_snapshot.tokens_available }}" data-investor-name="{{ request.user.get_full_name|default:request.user.username }}" data-portfolio-url="{% url 'investor_panel' %}" data-transactions-target="investment-transactions-body">
+        <div class="investor-opportunities__head">
+          <div class="investor-opportunities__copy">
+            <h3>Oportunidades activas</h3>
+            <p>Consulta el capital disponible para invertir en tokens dentro de cada activo y recorre el carrusel para revisar su avance operativo y acceder al detalle.</p>
+          </div>
+          <div class="investor-opportunities__controls">
+            <button type="button" class="investor-opportunities__control" data-carousel-prev aria-label="Ver activos anteriores">&#8249;</button>
+            <button type="button" class="investor-opportunities__control" data-carousel-next aria-label="Ver activos siguientes">&#8250;</button>
+          </div>
+        </div>
+        <div class="investor-opportunities__viewport">
+        <div class="investor-opportunities__track" data-opportunities-carousel>
+          {% for item in opportunity_assets %}
+          <article
+            class="investor-opportunity-card{% if item.is_selected %} is-selected{% endif %}"
+            data-asset-code="{{ item.asset.code }}"
+            data-asset-name="{{ item.asset.name }}"
+            data-asset-type="{% if item.asset.asset_type == 'lot' %}Lote{% else %}Individual{% endif %}"
+            data-asset-category="{{ item.asset.category.name }}"
+            data-asset-producer="{{ item.asset.producer.name }}"
+            data-asset-farm="{{ item.asset.farm.name }}"
+            data-asset-location="{{ item.asset.farm.municipality }}, {{ item.asset.farm.department }}"
+            data-asset-weight="{{ item.asset.current_weight }} kg"
+            data-asset-projected-value="${{ item.asset.projected_value|floatformat:0|intcomma }} COP"
+            data-asset-return="{{ item.asset.estimated_return_pct|floatformat:1 }}%"
+            data-asset-tokens-available="{{ item.asset.available_units }}"
+            data-asset-token-price="{{ item.asset.token_price|floatformat:0 }}"
+            data-asset-holding="{{ item.holding_quantity }}"
+            data-asset-total-invested="${{ item.total_invested|floatformat:0|intcomma }} COP"
+            data-asset-start-date="{{ item.asset.start_date }}"
+            data-asset-sale-date="{{ item.asset.estimated_sale_date }}"
+            data-asset-status="{{ item.asset.get_status_display }}"
+            data-asset-validated="{% if item.is_validated %}true{% else %}false{% endif %}"
+            data-asset-image="{% static item.image_path %}"
+            data-total-tokens="{{ item.total_tokens }}"
+            data-tokens-sold="{{ item.tokens_sold }}"
+            data-capital-raised="{{ item.capital_raised|floatformat:0 }}"
+            data-capital-remaining="{{ item.capital_remaining|floatformat:0 }}"
+            data-participants-estimate="{{ item.participants_estimate }}"
+            data-urgency-label="{{ item.urgency_label }}"
+            data-urgency-tone="{{ item.urgency_tone }}"
+            data-estimated-return="{{ item.asset.estimated_return_pct|floatformat:2 }}"
+            data-invest-endpoint="{% url 'invest_asset_tokens' item.asset.code %}"
+            tabindex="0"
+          >
+            <div class="investor-opportunity-card__media">
+              <img src="{% static item.image_path %}" alt="{{ item.asset.name }}" class="investor-opportunity-card__image">
+              <div class="investor-opportunity-card__overlay"></div>
+              <div class="investor-opportunity-card__media-bottom">
+                <span class="investor-opportunity-card__eyebrow">{{ item.asset.code }}</span>
+                <strong>{{ item.asset.name }}</strong>
+              </div>
+            </div>
+            <div class="investor-opportunity-card__body">
+              <h5>{{ item.asset.name }}</h5>
+              <div class="investor-opportunity-card__meta-row">
+                <span class="investor-opportunity-card__pill investor-opportunity-card__pill--return">+{{ item.asset.estimated_return_pct|floatformat:1 }}% retorno</span>
+              </div>
+              <div class="investor-opportunity-card__text">
+                {{ item.asset.description|truncatechars:110 }}
+              </div>
+              <div class="investor-opportunity-card__progress">
+                <div class="investor-opportunity-card__progress-head">
+                  <span data-asset-progress-copy>{{ item.tokens_sold }} / {{ item.total_tokens }} tokens vendidos</span>
+                  <b data-asset-progress-value>{{ item.progress_percent }}%</b>
+                </div>
+                <div class="investor-opportunity-card__progress-bar">
+                  <span data-asset-progress-bar style="width: {{ item.progress_percent }}%;"></span>
+                </div>
+              </div>
+              <div
+                class="investor-opportunity-card__urgency{% if item.has_high_demand %} is-hot{% endif %}"
+                style="--token-flow-duration: {{ item.flow_duration }}s; --token-flow-intensity: {{ item.flow_intensity }};"
+              >
+                <div class="investor-opportunity-card__flow">
+                  <span class="investor-opportunity-card__flow-label">Movimiento de tokens</span>
+                  <div class="investor-opportunity-card__flow-track" aria-hidden="true">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                </div>
+                <div class="investor-opportunity-card__flow-copy">
+                  <span data-asset-availability-copy>{{ item.tokens_sold }} vendidos | {{ item.tokens_available }} disponibles</span>
+                  <b data-asset-urgency-label>{{ item.urgency_label }}</b>
+                </div>
+              </div>
+              <div class="investor-opportunity-card__footer">
+                <div class="investor-opportunity-card__investment-box">
+                  <div class="investor-opportunity-card__capital-card">
+                    <div class="investor-opportunity-card__capital-side">
+                      <small>Tokens disponibles</small>
+                      <b data-asset-tokens-available>{{ item.tokens_available }} tokens</b>
+                    </div>
+                    <div class="investor-opportunity-card__price-copy">
+                      <span>Capital disponible</span>
+                      <strong>
+                        <span class="investor-opportunity-card__price-amount" data-asset-price-amount>${{ item.available_investment_total|floatformat:0|intcomma }}</span>
+                        <span class="investor-opportunity-card__price-currency">COP</span>
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+                <div class="investor-opportunity-card__actions">
+                  <button type="button" class="investor-opportunity-card__link" data-open-investment-modal>Invertir ahora</button>
+                  <a href="{% url 'asset_detail' item.asset.code %}" class="agt-inline-link">Ver detalle</a>
+                </div>
+              </div>
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+        </div>
+      </section>
+
+      <div class="agt-investment-modal" id="agt-investment-modal" aria-hidden="true">
+        <div class="agt-investment-modal__backdrop" data-close-investment-modal></div>
+        <div class="agt-investment-sheet" role="dialog" aria-modal="true" aria-labelledby="agt-investment-title">
+          <button type="button" class="agt-investment-sheet__close" data-close-investment-modal aria-label="Cerrar flujo de inversión">&times;</button>
+          <div class="agt-investment-state is-active" data-invest-state="form">
+            <div class="agt-investment-layout">
+              <aside class="agt-investment-aside">
+                <span class="agt-investment-aside__eyebrow">Tokenización del activo</span>
+                <h4 id="agt-investment-title" data-modal-asset-name>Activo AgroTech</h4>
+                <p data-modal-asset-copy>Tu inversión quedará respaldada por un contrato digital de copropiedad y un registro hash en blockchain.</p>
+                <div class="agt-investment-media">
+                  <img src="" alt="" data-modal-asset-image>
+                </div>
+                <div class="agt-investment-tags">
+                  <span data-modal-asset-code>-</span>
+                  <span data-modal-asset-status>-</span>
+                  <span data-modal-asset-urgency>-</span>
+                </div>
+                <div class="agt-investment-summary-grid">
+                  <div><span>Precio por token</span><strong data-modal-token-price>$0 COP</strong></div>
+                  <div><span>Wallet AGT</span><strong><span data-modal-wallet-tokens>0</span> tokens</strong></div>
+                  <div><span>Tokens del activo</span><strong><span data-modal-asset-tokens>0</span> disponibles</strong></div>
+                  <div><span>Participantes</span><strong data-modal-participants>0</strong></div>
+                </div>
+              </aside>
+              <div class="agt-investment-main">
+                <div class="agt-investment-main__head">
+                  <div>
+                    <span class="agt-investment-main__eyebrow">Adquiere participación digital en este activo</span>
+                    <h5>Configura tu inversión AGT</h5>
+                  </div>
+                  <span class="agt-status-pill" data-modal-asset-badge>Disponible</span>
+                </div>
+                <div class="agt-investment-form-grid">
+                  <label class="agt-field">
+                    <span>Cantidad de tokens AGT</span>
+                    <input type="number" min="1" step="1" value="1" data-invest-quantity-input>
+                  </label>
+                  <div class="agt-slider-wrap">
+                    <input type="range" min="1" step="1" value="1" data-invest-quantity-slider>
+                  </div>
+                </div>
+                <div class="agt-inline-alert" data-invest-validation hidden></div>
+                <div class="agt-investment-kpis">
+                  <article><span>Total equivalente</span><strong data-invest-total-cop>$0 COP</strong></article>
+                  <article><span>Participación adquirida</span><strong data-invest-participation>0%</strong></article>
+                  <article><span>Rentabilidad estimada</span><strong data-invest-estimated-return>0%</strong></article>
+                  <article><span>Saldo restante AGT</span><strong data-invest-remaining-wallet>0 tokens</strong></article>
+                </div>
+                <div class="agt-investment-disclaimer">
+                  La operación será registrada mediante hash en blockchain. Recibirás un certificado digital de participación y la trazabilidad del activo quedará actualizada en tiempo real.
+                </div>
+                <div class="agt-investment-actions">
+                  <button type="button" class="theme-btn btn-style-eight" data-close-investment-modal><span class="txt">Cancelar</span></button>
+                  <button type="button" class="theme-btn btn-style-twelve" data-confirm-investment><span class="txt">Confirmar inversión</span></button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="agt-investment-state" data-invest-state="processing">
+            <div class="agt-processing">
+              <span class="agt-investment-aside__eyebrow">Trazabilidad de la inversión</span>
+              <h4>Ejecutando operación AGT</h4>
+              <p>Simulación académica de blockchain con validación de saldo, contrato digital de copropiedad y certificado de participación.</p>
+              <div class="agt-stepper" data-stepper></div>
+            </div>
+          </div>
+
+          <div class="agt-investment-state" data-invest-state="certificate">
+            <div class="agt-certificate">
+              <span class="agt-investment-aside__eyebrow">Certificado digital de participación</span>
+              <h4>Adquisición confirmada en blockchain</h4>
+              <p>Tu posición ya forma parte del portafolio AgroTech y quedó vinculada a un contrato digital de copropiedad.</p>
+              <div class="agt-certificate__grid">
+                <div><span>Inversionista</span><strong data-certificate-investor>-</strong></div>
+                <div><span>Activo</span><strong data-certificate-asset>-</strong></div>
+                <div><span>Código del lote</span><strong data-certificate-code>-</strong></div>
+                <div><span>Tokens adquiridos</span><strong data-certificate-tokens>-</strong></div>
+                <div><span>Participación</span><strong data-certificate-participation>-</strong></div>
+                <div><span>Inversión COP</span><strong data-certificate-total>-</strong></div>
+                <div><span>Rentabilidad estimada</span><strong data-certificate-return>-</strong></div>
+                <div><span>Emitido</span><strong data-certificate-issued>-</strong></div>
+                <div><span>TX Hash</span><strong data-certificate-hash>-</strong></div>
+                <div><span>Contract ID</span><strong data-certificate-contract>-</strong></div>
+                <div><span>Estado del contrato</span><strong data-certificate-status>-</strong></div>
+                <div><span>Validación</span><strong data-certificate-validation>-</strong></div>
+              </div>
+              <div class="agt-certificate__actions">
+                <button type="button" class="theme-btn btn-style-eight" data-view-contract><span class="txt">Ver contrato digital</span></button>
+                <a href="{% url 'investor_panel' %}" class="theme-btn btn-style-twelve"><span class="txt">Ver en portafolio</span></a>
+                <button type="button" class="agt-inline-link" data-close-investment-modal>Cerrar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+      <div class="checkout-modal" id="checkout-modal" aria-hidden="true">
+        <div class="checkout-sheet" role="dialog" aria-modal="true" aria-labelledby="checkout-title">
+          <div class="checkout-layout">
+            <div class="checkout-summary">
+              <span class="checkout-summary__eyebrow">Checkout AgroTech</span>
+              <h4 id="checkout-title">Compra con AgroTech</h4>
+              <p>Completa tu compra de tokens con AgroTech y registra la transacci&oacute;n dentro de tu portafolio.</p>
+              <div class="checkout-summary__card">
+                <div class="checkout-summary__row">
+                  <span>Activo</span>
+                  <strong id="checkout-asset-name">{{ selected_asset.asset.name }}</strong>
+                </div>
+                <div class="checkout-summary__row">
+                  <span>Tokens AGT</span>
+                  <strong id="checkout-tokens">{% if calculation %}{{ calculation.estimated_tokens }}{% else %}0{% endif %}</strong>
+                </div>
+                <div class="checkout-summary__row">
+                  <span>Monto BTC</span>
+                  <strong id="checkout-btc">{{ panel_form.btc_amount.value|default:"0.050000" }} BTC</strong>
+                </div>
+                <div class="checkout-summary__row">
+                  <span>Total USD</span>
+                  <strong id="checkout-usd">${% if calculation %}{{ calculation.equivalent_usd|floatformat:2 }}{% else %}0.00{% endif %} USD</strong>
+                </div>
+                <div class="checkout-summary__row">
+                  <span>Total COP</span>
+                  <strong id="checkout-cop">${% if calculation %}{{ calculation.equivalent_cop|floatformat:0|intcomma }}{% else %}0{% endif %} COP</strong>
+                </div>
+              </div>
+              <div class="checkout-rate">BTC spot actual de referencia: 1 BTC = ${{ demo_btc_usd_rate|floatformat:2 }} USD | ${{ demo_btc_cop_rate|floatformat:0|intcomma }} COP</div>
+            </div>
+            <div class="checkout-form">
+              <button type="button" class="checkout-close" id="checkout-close" aria-label="Cerrar checkout">&times;</button>
+              <span class="checkout-form__eyebrow">Pasarela AgroTech</span>
+              <div class="checkout-brand">Pago seguro</div>
+              <h4>Tarjeta de cr&eacute;dito</h4>
+              <p class="checkout-form__copy">Ingresa los datos de la tarjeta para confirmar la compra de tokens y actualizar tu wallet dentro del panel.</p>
+              <div class="checkout-fields">
+                <div class="checkout-field">
+                  <label for="checkout-card-name">Titular</label>
+                  <input id="checkout-card-name" type="text" placeholder="Nombre como aparece en la tarjeta">
+                </div>
+                <div class="checkout-field">
+                  <label for="checkout-card-number">N&uacute;mero de tarjeta</label>
+                  <input id="checkout-card-number" type="text" inputmode="numeric" maxlength="19" placeholder="4242 4242 4242 4242">
+                </div>
+                <div class="checkout-field-row">
+                  <div class="checkout-field">
+                    <label for="checkout-card-expiry">Vencimiento</label>
+                    <input id="checkout-card-expiry" type="text" inputmode="numeric" maxlength="5" placeholder="MM/AA">
+                  </div>
+                  <div class="checkout-field">
+                    <label for="checkout-card-cvv">CVV</label>
+                    <input id="checkout-card-cvv" type="text" inputmode="numeric" maxlength="4" placeholder="123">
+                  </div>
+                </div>
+              </div>
+              <div class="checkout-actions">
+                <button type="button" class="theme-btn btn-style-eight" id="checkout-cancel-btn"><span class="txt">Cancelar</span></button>
+                <button type="button" class="theme-btn btn-style-twelve checkout-pay" id="checkout-confirm-btn"><span class="txt">Confirmar compra</span></button>
+              </div>
+              <p class="checkout-note">Al confirmar, AgroTech registra la compra y actualiza tu wallet con el nuevo balance de tokens.</p>
+              <div class="checkout-processing" id="checkout-processing" aria-live="polite">
+                <div class="checkout-spinner"></div>
+                <h5>Confirmando compra</h5>
+                <p>Estamos validando tu compra con AgroTech y registrando tus tokens AGT en el portafolio.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="investor-table-card">
+        <h4>Panel no disponible</h4>
+        <p class="investor-empty">No hay activos tokenizados disponibles en este momento.</p>
+      </div>
+  {% endif %}
+    </div>
+  </div>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const track = document.querySelector("[data-opportunities-carousel]");
+      const prev = document.querySelector("[data-carousel-prev]");
+      const next = document.querySelector("[data-carousel-next]");
+
+      if (track && prev && next) {
+        const isTouchCarousel = window.matchMedia("(max-width: 767px), (pointer: coarse)").matches;
+
+        const getStep = () => {
+          const firstCard = track.querySelector(".investor-opportunity-card");
+          if (!firstCard) {
+            return 320;
+          }
+
+          return firstCard.getBoundingClientRect().width + 20;
+        };
+
+        prev.addEventListener("click", function () {
+          track.scrollBy({ left: -getStep(), behavior: "smooth" });
+        });
+
+        next.addEventListener("click", function () {
+          track.scrollBy({ left: getStep(), behavior: "smooth" });
+        });
+
+        if (!isTouchCarousel) {
+          let isPointerDown = false;
+          let dragStartX = 0;
+          let dragStartScroll = 0;
+          let draggedDistance = 0;
+          let suppressCardClick = false;
+
+          const endDrag = function () {
+            isPointerDown = false;
+            track.classList.remove("is-dragging");
+            window.setTimeout(function () {
+              suppressCardClick = false;
+            }, 0);
+          };
+
+          track.addEventListener("pointerdown", function (event) {
+            isPointerDown = true;
+            dragStartX = event.clientX;
+            dragStartScroll = track.scrollLeft;
+            draggedDistance = 0;
+            suppressCardClick = false;
+            track.classList.add("is-dragging");
+          });
+
+          track.addEventListener("pointermove", function (event) {
+            if (!isPointerDown) {
+              return;
+            }
+            const delta = event.clientX - dragStartX;
+            draggedDistance = Math.max(draggedDistance, Math.abs(delta));
+            if (draggedDistance > 8) {
+              suppressCardClick = true;
+            }
+            track.scrollLeft = dragStartScroll - delta;
+          });
+
+          track.addEventListener("pointerup", endDrag);
+          track.addEventListener("pointerleave", endDrag);
+          track.addEventListener("pointercancel", endDrag);
+          track.addEventListener("click", function (event) {
+            if (!suppressCardClick) {
+              return;
+            }
+            event.preventDefault();
+            event.stopPropagation();
+          }, true);
+        }
+
+        const opportunityCards = Array.from(track.querySelectorAll(".investor-opportunity-card"));
+
+        if ("IntersectionObserver" in window) {
+          const visibilityObserver = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+              if (!entry.isIntersecting) {
+                return;
+              }
+              entry.target.classList.add("is-visible");
+              visibilityObserver.unobserve(entry.target);
+            });
+          }, {
+            root: track,
+            threshold: 0.18,
+          });
+
+          opportunityCards.forEach(function (card) {
+            visibilityObserver.observe(card);
+          });
+        } else {
+          opportunityCards.forEach(function (card) {
+            card.classList.add("is-visible");
+          });
+        }
+      }
+
+      const selectedAssetCodeInput = document.getElementById("selected-asset-code-input");
+      const selectedAssetTokensChip = document.getElementById("selected-asset-tokens-chip");
+      const checkoutAssetName = document.getElementById("checkout-asset-name");
+      const portfolioPanelBadge = document.getElementById("portfolio-panel-badge");
+      const portfolioPanelGrid = document.getElementById("portfolio-panel-grid");
+      const portfolioPanelPending = document.getElementById("portfolio-panel-pending");
+      const portfolioPendingNote = document.getElementById("portfolio-pending-note");
+      const portfolioPendingAsset = document.getElementById("portfolio-pending-asset");
+      const portfolioPendingStatus = document.getElementById("portfolio-pending-status");
+      const portfolioPendingCondition = document.getElementById("portfolio-pending-condition");
+      const portfolioAssetName = document.getElementById("portfolio-asset-name");
+      const portfolioAssetType = document.getElementById("portfolio-asset-type");
+      const portfolioAssetCategory = document.getElementById("portfolio-asset-category");
+      const portfolioAssetProducer = document.getElementById("portfolio-asset-producer");
+      const portfolioAssetFarm = document.getElementById("portfolio-asset-farm");
+      const portfolioAssetLocation = document.getElementById("portfolio-asset-location");
+      const portfolioAssetWeight = document.getElementById("portfolio-asset-weight");
+      const portfolioAssetProjectedValue = document.getElementById("portfolio-asset-projected-value");
+      const portfolioAssetReturn = document.getElementById("portfolio-asset-return");
+      const portfolioAssetTokensAvailable = document.getElementById("portfolio-asset-tokens-available");
+      const portfolioAssetHolding = document.getElementById("portfolio-asset-holding");
+      const portfolioAssetTotalInvested = document.getElementById("portfolio-asset-total-invested");
+      const portfolioAssetStartDate = document.getElementById("portfolio-asset-start-date");
+      const portfolioAssetSaleDate = document.getElementById("portfolio-asset-sale-date");
+      const portfolioAssetStatus = document.getElementById("portfolio-asset-status");
+      const opportunityCards = Array.from(document.querySelectorAll(".investor-opportunity-card[data-asset-code]"));
+      let scheduleQuoteRefresh = null;
+
+      const syncSelectedAssetState = function (card) {
+        if (!card) {
+          return;
+        }
+
+        const data = card.dataset;
+        const isValidated = data.assetValidated === "true";
+
+        opportunityCards.forEach(function (item) {
+          item.classList.toggle("is-selected", item === card);
+        });
+
+        if (selectedAssetCodeInput) {
+          selectedAssetCodeInput.value = data.assetCode || "";
+        }
+
+        if (selectedAssetTokensChip) {
+          selectedAssetTokensChip.textContent = (data.assetTokensAvailable || "0") + " tokens disponibles";
+        }
+
+        if (typeof form !== "undefined" && form) {
+          form.dataset.availableTokens = data.assetTokensAvailable || "0";
+          if (data.assetTokenPrice) {
+            form.dataset.tokenPriceCop = data.assetTokenPrice;
+          }
+        }
+
+        if (typeof openBtn !== "undefined" && openBtn) {
+          openBtn.disabled = true;
+        }
+
+        if (checkoutAssetName) {
+          checkoutAssetName.textContent = data.assetName || "";
+        }
+
+        if (portfolioPanelBadge) {
+          portfolioPanelBadge.textContent = isValidated
+            ? (data.assetCode || "") + " validado"
+            : "Pendiente de validacion";
+        }
+
+        if (portfolioPendingAsset) {
+          portfolioPendingAsset.textContent = data.assetName || "";
+        }
+
+        if (portfolioPendingStatus) {
+          portfolioPendingStatus.textContent = isValidated ? "Portafolio validado" : "Pendiente de validacion";
+        }
+
+        if (portfolioPendingCondition) {
+          portfolioPendingCondition.textContent = isValidated
+            ? "La inversion fue validada. El portafolio completo ya se encuentra habilitado."
+            : "Completa la inversion final para habilitar este portafolio.";
+        }
+
+        if (portfolioAssetName) {
+          portfolioAssetName.textContent = data.assetName || "";
+        }
+
+        if (portfolioAssetType) {
+          portfolioAssetType.textContent = data.assetType || "";
+        }
+
+        if (portfolioAssetCategory) {
+          portfolioAssetCategory.textContent = data.assetCategory || "";
+        }
+
+        if (portfolioAssetProducer) {
+          portfolioAssetProducer.textContent = data.assetProducer || "";
+        }
+
+        if (portfolioAssetFarm) {
+          portfolioAssetFarm.textContent = data.assetFarm || "";
+        }
+
+        if (portfolioAssetLocation) {
+          portfolioAssetLocation.textContent = data.assetLocation || "";
+        }
+
+        if (portfolioAssetWeight) {
+          portfolioAssetWeight.textContent = data.assetWeight || "";
+        }
+
+        if (portfolioAssetProjectedValue) {
+          portfolioAssetProjectedValue.textContent = data.assetProjectedValue || "";
+        }
+
+        if (portfolioAssetReturn) {
+          portfolioAssetReturn.textContent = data.assetReturn || "";
+        }
+
+        if (portfolioAssetTokensAvailable) {
+          portfolioAssetTokensAvailable.textContent = data.assetTokensAvailable || "0";
+        }
+
+        if (portfolioAssetHolding) {
+          portfolioAssetHolding.textContent = data.assetHolding || "0";
+        }
+
+        if (portfolioAssetTotalInvested) {
+          portfolioAssetTotalInvested.textContent = data.assetTotalInvested || "$0 COP";
+        }
+
+        if (portfolioAssetStartDate) {
+          portfolioAssetStartDate.textContent = data.assetStartDate || "";
+        }
+
+        if (portfolioAssetSaleDate) {
+          portfolioAssetSaleDate.textContent = data.assetSaleDate || "";
+        }
+
+        if (portfolioAssetStatus) {
+          portfolioAssetStatus.textContent = data.assetStatus || "";
+        }
+
+        if (portfolioPanelGrid) {
+          portfolioPanelGrid.classList.toggle("is-hidden", !isValidated);
+        }
+
+        if (portfolioPanelPending) {
+          portfolioPanelPending.classList.toggle("is-hidden", isValidated);
+        }
+
+        if (portfolioPendingNote) {
+          portfolioPendingNote.classList.toggle("is-hidden", isValidated);
+        }
+
+        if (typeof scheduleQuoteRefresh === "function") {
+          scheduleQuoteRefresh();
+        }
+      };
+
+      opportunityCards.forEach(function (card) {
+        card.addEventListener("click", function (event) {
+          if (event.target.closest("a")) {
+            return;
+          }
+          syncSelectedAssetState(card);
+        });
+
+        card.addEventListener("keydown", function (event) {
+          if (event.key !== "Enter" && event.key !== " ") {
+            return;
+          }
+          if (event.target.closest("a")) {
+            return;
+          }
+          event.preventDefault();
+          syncSelectedAssetState(card);
+        });
+      });
+
+      const form = document.getElementById("investor-panel-form");
+      const openBtn = document.getElementById("open-checkout-btn");
+      const modal = document.getElementById("checkout-modal");
+      const closeBtn = document.getElementById("checkout-close");
+      const cancelBtn = document.getElementById("checkout-cancel-btn");
+      const confirmBtn = document.getElementById("checkout-confirm-btn");
+      const processing = document.getElementById("checkout-processing");
+      const actionInput = document.getElementById("investor-panel-action");
+      const btcInput = document.getElementById("id_btc_amount");
+      const btcSlider = document.getElementById("btc-amount-slider");
+      const btcLiveRate = document.getElementById("btc-live-rate");
+      const btcLiveMessage = document.getElementById("btc-live-message");
+      const liveError = document.getElementById("investor-live-error");
+      const calcTokensMetric = document.getElementById("calc-tokens-metric");
+      const calcUsdMetric = document.getElementById("calc-usd-metric");
+      const calcCopMetric = document.getElementById("calc-cop-metric");
+      const calcTokensValue = document.getElementById("calc-tokens-value");
+      const calcUsdValue = document.getElementById("calc-usd-value");
+      const calcCopValue = document.getElementById("calc-cop-value");
+      const cardName = document.getElementById("checkout-card-name");
+      const cardNumber = document.getElementById("checkout-card-number");
+      const cardExpiry = document.getElementById("checkout-card-expiry");
+      const cardCvv = document.getElementById("checkout-card-cvv");
+      const modalBtc = document.getElementById("checkout-btc");
+      const modalUsd = document.getElementById("checkout-usd");
+      const modalCop = document.getElementById("checkout-cop");
+      const modalTokens = document.getElementById("checkout-tokens");
+      const wallet = document.getElementById("linked-wallet");
+      const walletEmptyState = document.getElementById("wallet-empty-state");
+      const walletCardHolder = document.getElementById("wallet-card-holder");
+      const walletCardHidden = document.getElementById("wallet-card-hidden");
+      const walletCardNumber = document.getElementById("wallet-card-number");
+      const walletBankCard = document.getElementById("wallet-bank-card");
+      const walletStorageKey = (wallet && wallet.dataset.storageKey) || "agrotechLinkedCard";
+
+      if (!form || !openBtn || !modal || !confirmBtn || !actionInput || !btcInput || !calcTokensValue || !calcUsdValue || !calcCopValue) {
+        return;
+      }
+
+      const btcUsdRate = parseFloat(form.dataset.btcUsdRate || "74096") || 74096;
+      const btcCopRate = parseFloat(form.dataset.btcCopRate || "265905079") || 265905079;
+      const formatUsd = function (value) {
+        return "$" + new Intl.NumberFormat("en-US", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        }).format(value || 0) + " USD";
+      };
+
+      const formatCop = function (value) {
+        return "$" + new Intl.NumberFormat("en-US", {
+          maximumFractionDigits: 0
+        }).format(value || 0) + " COP";
+      };
+
+      const formatBtc = function (value) {
+        return (Number.isFinite(value) ? value : 0).toFixed(6) + " BTC";
+      };
+
+      const parseNumeric = function (value) {
+        const numeric = parseFloat(value);
+        return Number.isFinite(numeric) ? numeric : 0;
+      };
+
+      const getTokenPriceCop = function () {
+        return parseNumeric(form.dataset.tokenPriceCop || "500000");
+      };
+
+      const getAvailableTokens = function () {
+        return Math.max(parseInt(form.dataset.availableTokens || "0", 10) || 0, 0);
+      };
+
+      const sanitizeBtcInput = function (rawValue) {
+        const value = String(rawValue || "").replace(/,/g, ".").replace(/[^\d.]/g, "");
+        if (!value) {
+          return "";
+        }
+
+        const parts = value.split(".");
+        let integerPart = parts[0] || "0";
+        const decimalPart = parts.slice(1).join("").slice(0, 6);
+
+        integerPart = integerPart.replace(/^0+(?=\d)/, "");
+        if (!integerPart) {
+          integerPart = "0";
+        }
+
+        return value.includes(".") ? integerPart + "." + decimalPart : integerPart;
+      };
+
+      const getBtcAmount = function () {
+        return Math.max(parseNumeric(btcInput.value), 0);
+      };
+
+      const calculateQuote = function (btcAmount) {
+        const amount = Number.isFinite(btcAmount) ? Math.max(btcAmount, 0) : 0;
+        const equivalentUsd = amount * btcUsdRate;
+        const equivalentCop = amount * btcCopRate;
+        const tokenPrice = getTokenPriceCop();
+        const availableTokens = getAvailableTokens();
+        const estimatedTokens = tokenPrice > 0 ? Math.floor(equivalentCop / tokenPrice) : 0;
+
+        return {
+          btcAmount: amount,
+          equivalentUsd: equivalentUsd,
+          equivalentCop: equivalentCop,
+          estimatedTokens: estimatedTokens,
+          availableTokens: availableTokens,
+          canBuy: amount > 0 && estimatedTokens >= 1 && estimatedTokens <= availableTokens
+        };
+      };
+
+      const quoteState = {
+        quote: calculateQuote(getBtcAmount()),
+        currentTokens: parseInt(calcTokensValue.dataset.value || calcTokensValue.textContent || "0", 10) || 0,
+        tokenAnimationFrame: null,
+        feedbackTimer: null,
+        debounceTimer: null
+      };
+
+      const openModal = function () {
+        modal.classList.add("is-open");
+        modal.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+      };
+
+      const closeModal = function () {
+        if (processing) {
+          processing.classList.remove("is-active");
+        }
+        modal.classList.remove("is-open");
+        modal.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = "";
+      };
+
+      const pulseMetrics = function () {
+        [calcTokensMetric, calcUsdMetric, calcCopMetric].forEach(function (metric) {
+          if (!metric) {
+            return;
+          }
+          metric.classList.remove("is-updating");
+          void metric.offsetWidth;
+          metric.classList.add("is-updating");
+        });
+
+        window.clearTimeout(quoteState.feedbackTimer);
+        quoteState.feedbackTimer = window.setTimeout(function () {
+          [calcTokensMetric, calcUsdMetric, calcCopMetric].forEach(function (metric) {
+            if (metric) {
+              metric.classList.remove("is-updating");
+            }
+          });
+        }, 220);
+      };
+
+      const animateTokenCount = function (target) {
+        const safeTarget = Math.max(parseInt(target, 10) || 0, 0);
+        const startValue = quoteState.currentTokens;
+
+        if (quoteState.tokenAnimationFrame) {
+          window.cancelAnimationFrame(quoteState.tokenAnimationFrame);
+        }
+
+        if (startValue === safeTarget) {
+          calcTokensValue.textContent = String(safeTarget);
+          calcTokensValue.dataset.value = String(safeTarget);
+          return;
+        }
+
+        const duration = 650;
+        const startTime = performance.now();
+
+        const step = function (timestamp) {
+          const progress = Math.min((timestamp - startTime) / duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          const nextValue = Math.round(startValue + (safeTarget - startValue) * eased);
+
+          calcTokensValue.textContent = String(nextValue);
+          calcTokensValue.dataset.value = String(nextValue);
+
+          if (progress < 1) {
+            quoteState.tokenAnimationFrame = window.requestAnimationFrame(step);
+            return;
+          }
+
+          quoteState.currentTokens = safeTarget;
+          quoteState.tokenAnimationFrame = null;
+        };
+
+        quoteState.tokenAnimationFrame = window.requestAnimationFrame(step);
+      };
+
+      const updateSliderRange = function (btcAmount) {
+        if (!btcSlider) {
+          return;
+        }
+
+        const tokenPrice = getTokenPriceCop();
+        const availableTokens = getAvailableTokens();
+        const rawMax = btcCopRate > 0 ? (availableTokens * tokenPrice) / btcCopRate : 0;
+        const maxValue = Math.max(rawMax, btcAmount, 0.000001);
+
+        btcSlider.max = maxValue.toFixed(6);
+        btcSlider.value = Math.min(btcAmount, maxValue).toFixed(6);
+      };
+
+      const updateAvailabilityState = function (quote) {
+        if (!liveError) {
+          return;
+        }
+
+        if (quote.estimatedTokens > quote.availableTokens && quote.availableTokens > 0) {
+          liveError.textContent = "El monto estimado supera la disponibilidad actual. Solo hay " + quote.availableTokens + " tokens AGT disponibles para compra.";
+          liveError.classList.remove("is-hidden");
+          return;
+        }
+
+        if (quote.availableTokens <= 0) {
+          liveError.textContent = "Este activo no tiene tokens AGT disponibles para compra en este momento.";
+          liveError.classList.remove("is-hidden");
+          return;
+        }
+
+        liveError.classList.add("is-hidden");
+      };
+
+      const renderQuote = function (quote) {
+        quoteState.quote = quote;
+
+        calcUsdValue.textContent = formatUsd(quote.equivalentUsd);
+        calcCopValue.textContent = formatCop(quote.equivalentCop);
+        animateTokenCount(quote.estimatedTokens);
+        pulseMetrics();
+        updateSliderRange(quote.btcAmount);
+        updateAvailabilityState(quote);
+
+        if (btcLiveMessage) {
+          btcLiveMessage.textContent = "Estas comprando aproximadamente " + quote.estimatedTokens + " tokens AGT.";
+        }
+
+        if (openBtn) {
+          openBtn.disabled = !quote.canBuy;
+        }
+
+        syncCheckoutSummary();
+      };
+
+      const refreshQuote = function () {
+        renderQuote(calculateQuote(getBtcAmount()));
+      };
+
+      scheduleQuoteRefresh = function () {
+        window.clearTimeout(quoteState.debounceTimer);
+        quoteState.debounceTimer = window.setTimeout(refreshQuote, 100);
+      };
+
+      const syncCheckoutSummary = function () {
+        if (btcInput && modalBtc) {
+          modalBtc.textContent = formatBtc(quoteState.quote.btcAmount);
+        }
+
+        if (modalTokens) {
+          modalTokens.textContent = String(quoteState.quote.estimatedTokens);
+        }
+
+        if (modalUsd) {
+          modalUsd.textContent = formatUsd(quoteState.quote.equivalentUsd);
+        }
+
+        if (modalCop) {
+          modalCop.textContent = formatCop(quoteState.quote.equivalentCop);
+        }
+      };
+
+      const normalizeCardNumber = function (value) {
+        return value.replace(/\D/g, "").slice(0, 16).replace(/(\d{4})(?=\d)/g, "$1 ").trim();
+      };
+
+      const normalizeExpiry = function (value) {
+        const digits = value.replace(/\D/g, "").slice(0, 4);
+        if (digits.length < 3) {
+          return digits;
+        }
+        return digits.slice(0, 2) + "/" + digits.slice(2);
+      };
+
+      const playLinkedCardAnimation = function () {
+        if (!walletBankCard) {
+          return;
+        }
+        walletBankCard.classList.remove("is-linking");
+        void walletBankCard.offsetWidth;
+        walletBankCard.classList.add("is-linking");
+      };
+
+      const applyLinkedCard = function (payload, options) {
+        const shouldAnimate = Boolean(options && options.animate);
+        if (!wallet || !walletEmptyState || !walletCardHolder || !walletCardHidden || !walletCardNumber) {
+          return;
+        }
+
+        if (!payload || !/^\d{4}$/.test(String(payload.last4 || ""))) {
+          wallet.classList.add("wallet--empty");
+          walletEmptyState.style.display = "";
+          if (walletBankCard) {
+            walletBankCard.classList.remove("is-linking");
+          }
+          walletCardHolder.textContent = "{{ holder_name|upper|truncatechars:18 }}";
+          walletCardHidden.textContent = "**** 4242";
+          walletCardNumber.textContent = "**** **** **** 4242";
+          return;
+        }
+
+        wallet.classList.remove("wallet--empty");
+        walletEmptyState.style.display = "none";
+        walletCardHolder.textContent = (payload.holder || "{{ holder_name|upper|truncatechars:18 }}").toUpperCase().slice(0, 18);
+        walletCardHidden.textContent = "**** " + payload.last4;
+        walletCardNumber.textContent = "**** **** **** " + payload.last4;
+        if (shouldAnimate) {
+          playLinkedCardAnimation();
+        }
+      };
+
+      const loadLinkedCard = function () {
+        try {
+          const raw = window.localStorage.getItem(walletStorageKey);
+          applyLinkedCard(raw ? JSON.parse(raw) : null, { animate: false });
+        } catch (error) {
+          applyLinkedCard(null, { animate: false });
+        }
+      };
+
+      const saveLinkedCard = function () {
+        try {
+          const digits = cardNumber.value.replace(/\D/g, "");
+          const payload = {
+            holder: cardName.value.trim(),
+            last4: digits.slice(-4)
+          };
+          window.localStorage.setItem(walletStorageKey, JSON.stringify(payload));
+          applyLinkedCard(payload, { animate: true });
+        } catch (error) {
+          applyLinkedCard(null, { animate: false });
+        }
+      };
+
+      if (cardNumber) {
+        cardNumber.addEventListener("input", function () {
+          cardNumber.value = normalizeCardNumber(cardNumber.value);
+        });
+      }
+
+      if (cardExpiry) {
+        cardExpiry.addEventListener("input", function () {
+          cardExpiry.value = normalizeExpiry(cardExpiry.value);
+        });
+      }
+
+      if (cardCvv) {
+        cardCvv.addEventListener("input", function () {
+          cardCvv.value = cardCvv.value.replace(/\D/g, "").slice(0, 4);
+        });
+      }
+
+      form.addEventListener("submit", function (event) {
+        if (actionInput.value !== "buy") {
+          event.preventDefault();
+        }
+      });
+
+      if (btcLiveRate) {
+        btcLiveRate.textContent = "≈ 1 BTC = $" + new Intl.NumberFormat("en-US", {
+          maximumFractionDigits: 0
+        }).format(btcUsdRate) + " USD";
+      }
+
+      btcInput.addEventListener("input", function () {
+        const sanitizedValue = sanitizeBtcInput(btcInput.value);
+        if (btcInput.value !== sanitizedValue) {
+          btcInput.value = sanitizedValue;
+        }
+
+        actionInput.value = "";
+        scheduleQuoteRefresh();
+      });
+
+      btcInput.addEventListener("blur", function () {
+        if (!btcInput.value) {
+          refreshQuote();
+          return;
+        }
+
+        btcInput.value = getBtcAmount().toFixed(6);
+        refreshQuote();
+      });
+
+      if (btcSlider) {
+        btcSlider.addEventListener("input", function () {
+          btcInput.value = parseNumeric(btcSlider.value).toFixed(6);
+          actionInput.value = "";
+          refreshQuote();
+        });
+      }
+
+      loadLinkedCard();
+      refreshQuote();
+
+      if (wallet) {
+        const clearWalletInteraction = function () {
+          wallet.classList.remove("is-active");
+          if (walletBankCard) {
+            walletBankCard.classList.remove("is-active");
+          }
+        };
+
+        wallet.addEventListener("click", function (event) {
+          if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+            return;
+          }
+          event.preventDefault();
+          const isActive = wallet.classList.contains("is-active");
+          clearWalletInteraction();
+          if (!isActive && !wallet.classList.contains("wallet--empty")) {
+            wallet.classList.add("is-active");
+            if (walletBankCard) {
+              walletBankCard.classList.add("is-active");
+            }
+          }
+        });
+
+        document.addEventListener("click", function (event) {
+          if (!wallet.contains(event.target)) {
+            clearWalletInteraction();
+          }
+        });
+      }
+
+      const handleOpenCheckout = function (event) {
+        if (event) {
+          event.preventDefault();
+        }
+        if (openBtn.disabled) {
+          return;
+        }
+        syncCheckoutSummary();
+        openModal();
+      };
+
+      [closeBtn, cancelBtn].forEach(function (button) {
+        if (!button) {
+          return;
+        }
+        button.addEventListener("click", closeModal);
+      });
+
+      modal.addEventListener("click", function (event) {
+        if (event.target === modal) {
+          closeModal();
+        }
+      });
+
+      document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape" && modal.classList.contains("is-open")) {
+          closeModal();
+        }
+      });
+
+      const handleConfirmCheckout = function (event) {
+        if (event) {
+          event.preventDefault();
+        }
+        const tokens = quoteState.quote.estimatedTokens || 0;
+
+        if (!cardName || !cardNumber || !cardExpiry || !cardCvv) {
+          window.alert("El checkout de AgroTech no pudo inicializarse correctamente.");
+          return;
+        }
+
+        if (!cardName.value.trim() || cardNumber.value.replace(/\D/g, "").length < 16 || cardExpiry.value.length < 5 || cardCvv.value.length < 3) {
+          window.alert("Completa los datos de la tarjeta para continuar.");
+          return;
+        }
+
+        if (tokens < 1) {
+          window.alert("Primero calcula una cantidad valida de tokens AGT.");
+          return;
+        }
+
+        if (!quoteState.quote.canBuy) {
+          window.alert("El monto actual no es valido para comprar tokens AGT en este activo.");
+          return;
+        }
+
+        saveLinkedCard();
+        processing.classList.add("is-active");
+        confirmBtn.disabled = true;
+        actionInput.value = "buy";
+
+        const selectedCard = document.querySelector('.investor-opportunity-card.is-selected') || opportunityCards[0];
+        window.dispatchEvent(new CustomEvent("agrotech-ledger-record", {
+          detail: {
+            source: "btc_checkout",
+            assetCode: selectedCard ? selectedCard.dataset.assetCode : (selectedAssetCodeInput ? selectedAssetCodeInput.value : ""),
+            assetName: selectedCard ? selectedCard.dataset.assetName : (checkoutAssetName ? checkoutAssetName.textContent : "Activo AgroTech"),
+            btcAmount: quoteState.quote.btcAmount,
+            agtAmount: tokens,
+            status: "pending",
+            operationType: "Compra AGT",
+            walletOriginLabel: "Wallet BTC inversionista",
+            walletDestinationLabel: "Wallet AGT AgroTech",
+            persist: true
+          }
+        }));
+
+        window.setTimeout(function () {
+          form.submit();
+        }, 1650);
+      };
+
+      openBtn.addEventListener("click", handleOpenCheckout);
+      confirmBtn.addEventListener("click", handleConfirmCheckout);
+      window.agroTechOpenCheckout = handleOpenCheckout;
+      window.agroTechConfirmCheckout = handleConfirmCheckout;
+    });
+  </script>
+  <script src="{% static 'js/agrotech-investment.js' %}"></script>
+</body>
+</html>
+
+
+
+

@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -34,11 +35,14 @@ INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
+    'django.contrib.humanize',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'landing',
 ]
+
+AUTH_USER_MODEL = 'landing.User'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -122,3 +126,12 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+AGROTECH_TOKEN_PRICE_COP = 500000
+AGROTECH_DEMO_BTC_USD = 74096
+AGROTECH_DEMO_BTC_COP = 265905079
+AGROTECH_DEMO_WALLET_TOKENS = 23
+PAYPAL_CLIENT_ID = os.environ.get(
+    "PAYPAL_CLIENT_ID",
+    "AXTO0mR0IowoygNWVtVFqpJSgNk9rv7-9he0Ru5yrGrHcz-L1FEbOXPIYWB9XU2Tk_tJ6GbCgNFsrvZ5",
+)

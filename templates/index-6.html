@@ -1,4 +1,5 @@
 {% load static %}
+{% get_static_prefix as STATIC_PREFIX %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -16,7 +17,6 @@
 <link href="{% static 'css/responsive.css' %}" rel="stylesheet">
 <!-- Template styles -->
 <link href="{% static 'css/index-6.css' %}" rel="stylesheet">
-<!--[if lt IE 9]><script src="https://cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv.js"></script><![endif]--> 
 
 </head>
 
@@ -77,7 +77,13 @@
                         <!--Nav Outer End-->
 
                         <div class="links-box clearfix">
-                            <div class="link"><a href="#contact-section" class="theme-btn btn-style-eight"><span class="txt">Acceder</span></a></div>
+                            <div class="link">
+                                {% if request.user.is_authenticated %}
+                                <a href="{% url 'investor_panel' %}" class="theme-btn btn-style-eight"><span class="txt">Mi panel</span></a>
+                                {% else %}
+                                <a href="#contact-section" class="theme-btn btn-style-eight"><span class="txt">Acceder</span></a>
+                                {% endif %}
+                            </div>
                         </div>
 
                         <!-- Hidden Nav Toggler -->
@@ -119,8 +125,20 @@
             
             <div class="links-box clearfix">
                 <div class="clearfix">
-                    <div class="link"><a href="#contact-section" class="theme-btn btn-style-one"><span class="txt">Solicitar acceso</span></a></div>
-                    <div class="link"><a href="#contact-section" class="theme-btn btn-style-two"><span class="txt">Acceder</span></a></div>
+                    <div class="link">
+                        {% if request.user.is_authenticated %}
+                        <a href="{% url 'investor_panel' %}" class="theme-btn btn-style-one"><span class="txt">Ir al panel</span></a>
+                        {% else %}
+                        <a href="#contact-section" class="theme-btn btn-style-one"><span class="txt">Solicitar acceso</span></a>
+                        {% endif %}
+                    </div>
+                    <div class="link">
+                        {% if request.user.is_authenticated %}
+                        <a href="{% url 'investor_panel' %}" class="theme-btn btn-style-two"><span class="txt">Mi portafolio</span></a>
+                        {% else %}
+                        <a href="#contact-section" class="theme-btn btn-style-two"><span class="txt">Acceder</span></a>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         
@@ -160,8 +178,8 @@
                                 <div class="inner">
                                     <div class="progress-box">
                                         <div class="info clearfix">
-                                            <div class="raised"><span>Unidades tokenizadas -</span> 128</div>
-                                            <div class="target"><span>Total disponible -</span> 11 millones / 50 millones COP</div>
+                                            <div class="raised"><span>Unidades tokenizadas -</span> <strong id="hero-tokenized-units">128</strong></div>
+                                            <div class="target"><span>Unidades disponibles -</span> <strong id="hero-available-units">32</strong></div>
                                         </div>
                                         <div class="bar-outer">
                                             <div class="bar-inner">
@@ -500,8 +518,8 @@
                                 <h5>1 Token AGT</h5>
                                 <p>Valor base de referencia dentro del ecosistema AgroTech para la participaci&oacute;n en el activo.</p>
                                 <div class="agro-token-spot__rate">
-                                    <strong class="agro-token-spot__rate-value">0,00196 BTC</strong>
-                                    <span>por token</span>
+                                    <strong class="agro-token-spot__rate-value" id="agrotech-token-price-cop">{{ agrotech_token_price_cop|floatformat:0 }} COP</strong>
+                                    <span id="agrotech-token-rate-btc">0,00196 BTC por token</span>
                                 </div>
                             </div>
                             <div class="agro-token-spot__visual" aria-hidden="true">
@@ -814,12 +832,12 @@
         <div class="auto-container">
             <div class="title-box-three centered">
                 <h2>Oportunidades activas de inversi&oacute;n</h2>
-                <div class="team-five__round-timer" data-round-days="7" data-tokenized-units="128" data-raised="28" data-target="50">
+                <div class="team-five__round-timer" data-round-days="7" data-tokenized-units="128" data-total-units="160" data-raised="28" data-target="50">
                     <div class="team-five__round-head">
                         <span class="team-five__round-label">Cierre de ronda en</span>
                         <span class="team-five__round-value">03d : 12h : 24m : 18s</span>
                     </div>
-                    <div class="team-five__round-context">Ronda activa &middot; 128 unidades tokenizadas &middot; 28 de 50 millones COP</div>
+                    <div class="team-five__round-context">Ronda activa &middot; 128 unidades tokenizadas &middot; 32 unidades disponibles &middot; 28 de 50 millones COP</div>
                     <div class="team-five__round-progress" role="progressbar" aria-label="Ronda financiada al 56 por ciento" aria-valuemin="0" aria-valuemax="100" aria-valuenow="56">
                         <span class="team-five__round-progress-fill"></span>
                     </div>
@@ -827,58 +845,42 @@
             </div>
             <div class="professionals">
                 <div class="team-carousel owl-theme owl-carousel">
+                    {% for item in featured_assets %}
                     <div class="team-block-five">
                         <div class="inner-box">
-                            <div class="image-box"><a href="#"><img src="{% static 'images/resource/team-31.png' %}" alt=""></a></div>
+                            <div class="image-box"><a href="{% url 'asset_detail' item.asset.code %}"><img src="{{ STATIC_PREFIX }}{{ item.image_path }}" alt="{{ item.asset.name }}"></a></div>
                             <div class="lower-box">
-                                <h5>Lote San Marcos</h5>
-                                <div class="designation">32 unidades disponibles &middot; $500.000 COP por unidad</div>
-                                <div class="text">Activos en etapa de levante con seguimiento semanal, trazabilidad sanitaria y avance productivo.</div>
+                                <h5>{{ item.asset.name }}</h5>
+                                <div class="designation">
+                                    {% if item.asset.asset_type == "lot" %}
+                                    Lote &middot; {{ item.asset.available_units }} unidades disponibles
+                                    {% else %}
+                                    Individual &middot; {{ item.asset.available_units }} unidades disponibles
+                                    {% endif %}
+                                    &middot; retorno estimado {{ item.asset.estimated_return_pct|floatformat:1 }}%
+                                </div>
+                                <div class="text">{{ item.asset.description|default:"Activo biologico tokenizado con seguimiento operativo y trazabilidad en plataforma."|truncatechars:120 }}</div>
                                 <ul class="social clearfix">
-                                    <li><a href="#contact-section">Ver detalle</a></li>
+                                    <li><a href="{% url 'asset_detail' item.asset.code %}">Ver detalle</a></li>
                                 </ul>
                             </div>
                         </div>
                     </div>
+                    {% empty %}
                     <div class="team-block-five">
                         <div class="inner-box">
-                            <div class="image-box"><a href="#"><img src="{% static 'images/resource/team-32.png' %}" alt=""></a></div>
+                            <div class="image-box"><a href="#"><img src="{% static 'images/Tokens/1.jpg' %}" alt="Activo AgroTech"></a></div>
                             <div class="lower-box">
-                                <h5>Activo Palermo 031</h5>
-                                <div class="designation">28 unidades disponibles &middot; ciclo estimado de 11 meses</div>
-                                <div class="text">Proyecto orientado a engorde sostenible con fecha de salida comercial ya proyectada.</div>
+                                <h5>Activo AgroTech</h5>
+                                <div class="designation">Sin oportunidades cargadas</div>
+                                <div class="text">Configura los activos destacados desde el panel de administraci&oacute;n para mostrarlos en esta secci&oacute;n.</div>
                                 <ul class="social clearfix">
-                                    <li><a href="#contact-section">Ver detalle</a></li>
+                                    <li><a href="#contact-section">Solicitar acceso</a></li>
                                 </ul>
                             </div>
                         </div>
                     </div>
-                    <div class="team-block-five">
-                        <div class="inner-box">
-                            <div class="image-box"><a href="#"><img src="{% static 'images/resource/team-33.png' %}" alt=""></a></div>
-                            <div class="lower-box">
-                                <h5>Novillo AGT-029</h5>
-                                <div class="designation">24 unidades disponibles &middot; 239 kg promedio</div>
-                                <div class="text">Activo en seguimiento con actualizaciones de peso, sanidad y rendimiento esperado.</div>
-                                <ul class="social clearfix">
-                                    <li><a href="#contact-section">Ver detalle</a></li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="team-block-five">
-                        <div class="inner-box">
-                            <div class="image-box"><a href="#"><img src="{% static 'images/resource/team-34.png' %}" alt=""></a></div>
-                            <div class="lower-box">
-                                <h5>Ronda Norte</h5>
-                                <div class="designation">44 unidades disponibles &middot; retorno estimado 16,5%</div>
-                                <div class="text">Participaci&oacute;n fraccionada en un lote activo con reportes digitales por etapa.</div>
-                                <ul class="social clearfix">
-                                    <li><a href="#contact-section">Ver detalle</a></li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
+                    {% endfor %}
                 </div>
             </div>
 
@@ -887,9 +889,31 @@
                     <h2>Activos en seguimiento</h2>
                 </div>
                 <div class="team-carousel owl-theme owl-carousel">
+                    {% for item in featured_assets %}
                     <div class="team-block-five">
                         <div class="inner-box">
-                            <div class="image-box"><a href="#"><img src="{% static 'images/resource/team-35.png' %}" alt=""></a></div>
+                            <div class="image-box"><a href="{% url 'asset_detail' item.asset.code %}"><img src="{{ STATIC_PREFIX }}{{ item.image_path }}" alt="{{ item.asset.name }}"></a></div>
+                            <div class="lower-box">
+                                <h5>{{ item.asset.name }}</h5>
+                                <div class="designation">
+                                    {% if item.asset.asset_type == "lot" %}
+                                    Lote &middot; {{ item.asset.available_units }} unidades disponibles
+                                    {% else %}
+                                    Individual &middot; {{ item.asset.available_units }} unidades disponibles
+                                    {% endif %}
+                                    &middot; retorno estimado {{ item.asset.estimated_return_pct|floatformat:1 }}%
+                                </div>
+                                <div class="text">{{ item.asset.description|default:"Activo biologico en seguimiento con trazabilidad operativa dentro de la plataforma."|truncatechars:120 }}</div>
+                                <ul class="social clearfix">
+                                    <li><a href="{% url 'asset_detail' item.asset.code %}">Seguir activo</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    <div class="team-block-five">
+                        <div class="inner-box">
+                            <div class="image-box"><a href="#"><img src="{% static 'images/Tokens/5.jpg' %}" alt="Activo Montería 014"></a></div>
                             <div class="lower-box">
                                 <h5>Activo Monter&iacute;a 014</h5>
                                 <div class="designation">Levante &middot; 212 kg promedio</div>
@@ -902,7 +926,7 @@
                     </div>
                     <div class="team-block-five">
                         <div class="inner-box">
-                            <div class="image-box"><a href="#"><img src="{% static 'images/resource/team-36.png' %}" alt=""></a></div>
+                            <div class="image-box"><a href="#"><img src="{% static 'images/Tokens/6.jpg' %}" alt="Activo Sabana 022"></a></div>
                             <div class="lower-box">
                                 <h5>Activo Sabana 022</h5>
                                 <div class="designation">Engorde &middot; 246 kg promedio</div>
@@ -915,7 +939,7 @@
                     </div>
                     <div class="team-block-five">
                         <div class="inner-box">
-                            <div class="image-box"><a href="#"><img src="{% static 'images/resource/team-37.png' %}" alt=""></a></div>
+                            <div class="image-box"><a href="#"><img src="{% static 'images/Tokens/7.jpg' %}" alt="Activo Valle 009"></a></div>
                             <div class="lower-box">
                                 <h5>Activo Valle 009</h5>
                                 <div class="designation">Cierre de ciclo &middot; venta programada</div>
@@ -928,7 +952,7 @@
                     </div>
                     <div class="team-block-five">
                         <div class="inner-box">
-                            <div class="image-box"><a href="#"><img src="{% static 'images/resource/team-38.png' %}" alt=""></a></div>
+                            <div class="image-box"><a href="#"><img src="{% static 'images/Tokens/8.jpg' %}" alt="Activo Llanos 018"></a></div>
                             <div class="lower-box">
                                 <h5>Activo Llanos 018</h5>
                                 <div class="designation">Control de peso &middot; validaci&oacute;n sanitaria</div>
@@ -1213,57 +1237,142 @@
                     <div class="form-col col-xl-6 col-lg-6 col-md-12">
                         <div class="agro-access__card">
                             <div class="agro-access__card-top">
-                                <span class="agro-access__status">Ingreso seguro</span>
+                                <span class="agro-access__status">{% if request.user.is_authenticated %}Sesion activa{% else %}Ingreso seguro{% endif %}</span>
+                                {% if request.user.is_authenticated %}
+                                <a href="{% url 'investor_panel' %}" class="agro-access__link">Abrir panel</a>
+                                {% else %}
                                 <a href="#token-sale" class="agro-access__link">Ver oportunidades</a>
+                                {% endif %}
                             </div>
-                            <h4>Accede a tu perfil AgroTech</h4>
-                            <div class="agro-access__card-intro">Ingresa con tus datos para continuar o solicita activaci&oacute;n si todav&iacute;a no tienes acceso a la plataforma.</div>
-                            <form method="post" action="#" class="agro-access__form default-form">
-                                <div class="row clearfix">
-                                    <div class="form-group col-lg-12 col-md-12 col-sm-12">
-                                        <div class="field-label">Correo electr&oacute;nico</div>
-                                        <div class="field-inner">
-                                            <span class="alt-icon far fa-envelope"></span>
-                                            <input type="email" name="email" value="" placeholder="tu@correo.com" required="">
-                                        </div>
-                                    </div>
-                                    <div class="form-group col-lg-12 col-md-12 col-sm-12">
-                                        <div class="field-label">Contrase&ntilde;a</div>
-                                        <div class="field-inner">
-                                            <span class="alt-icon fa-solid fa-lock"></span>
-                                            <input type="password" name="password" value="" placeholder="Ingresa tu contrase&ntilde;a" required="">
-                                        </div>
-                                    </div>
-                                    <div class="form-group col-lg-12 col-md-12 col-sm-12">
-                                        <div class="field-label">Tipo de acceso</div>
-                                        <div class="field-inner field-inner--select">
-                                            <span class="alt-icon fa-solid fa-user-tie"></span>
-                                            <select name="profile" required="">
-                                                <option value="">Selecciona tu perfil</option>
-                                                <option value="investor">Inversionista</option>
-                                                <option value="producer">Productor aliado</option>
-                                                <option value="partner">Aliado estrat&eacute;gico</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="form-group col-lg-12 col-md-12 col-sm-12">
-                                        <div class="agro-access__meta">
-                                            <label class="agro-access__check">
-                                                <input type="checkbox" name="remember">
-                                                <span>Recordar mi acceso</span>
-                                            </label>
-                                            <a href="#faqs-section">Necesito ayuda para ingresar</a>
-                                        </div>
-                                        <div class="agro-access__actions">
-                                            <button class="theme-btn btn-style-twelve" type="submit">
-                                                <span class="btn-title">Ingresar</span>
-                                            </button>
-                                            <a href="#token-sale" class="theme-btn btn-style-eight"><span class="txt">Solicitar acceso</span></a>
-                                        </div>
-                                        <div class="agro-access__note">Acceso orientado a usuarios vinculados al ecosistema AgroTech. La activaci&oacute;n puede requerir validaci&oacute;n de identidad y perfil.</div>
-                                    </div>
+                            <h4>{% if request.user.is_authenticated %}Tu perfil AgroTech est&aacute; listo{% else %}Accede a tu perfil AgroTech{% endif %}</h4>
+                            <div class="agro-access__card-intro">
+                                {% if request.user.is_authenticated %}
+                                Ya iniciaste sesi&oacute;n como <strong>{{ request.user.first_name|default:request.user.username }}</strong>. Puedes continuar directamente al panel del inversionista para calcular y comprar tokens.
+                                {% else %}
+                                Ingresa con tu correo y contrase&ntilde;a o crea una cuenta nueva como inversionista para comenzar en la plataforma demo.
+                                {% endif %}
+                            </div>
+                            {% if request.user.is_authenticated %}
+                            <div class="agro-access__feedback agro-access__feedback--success">
+                                Sesion activa con {{ request.user.email }}.
+                            </div>
+                            <div class="agro-access__actions">
+                                <a href="{% url 'investor_panel' %}" class="theme-btn btn-style-twelve"><span class="btn-title">Ir al panel del inversionista</span></a>
+                                <a href="#team-members" class="theme-btn btn-style-eight"><span class="txt">Explorar oportunidades</span></a>
+                            </div>
+                            <div class="agro-access__note">Desde el panel puedes calcular BTC a AGT, comprar tokens y revisar tu portafolio actualizado.</div>
+                            {% else %}
+                            <div class="agro-access__tabs" id="agro-auth-tabs" data-active-mode="{{ active_auth_mode|default:'login' }}">
+                                <button type="button" class="agro-access__tab{% if active_auth_mode != 'register' %} is-active{% endif %}" data-auth-target="login">Ingresar</button>
+                                <button type="button" class="agro-access__tab{% if active_auth_mode == 'register' %} is-active{% endif %}" data-auth-target="register">Crear cuenta</button>
+                            </div>
+
+                            {% if messages %}
+                                {% for message in messages %}
+                                <div class="agro-access__feedback {% if message.tags == 'success' %}agro-access__feedback--success{% else %}agro-access__feedback--error{% endif %}">
+                                    {{ message }}
                                 </div>
-                            </form>
+                                {% endfor %}
+                            {% endif %}
+
+                            <div class="agro-access__panel{% if active_auth_mode != 'register' %} is-active{% endif %}" data-auth-panel="login">
+                                <form method="post" action="#contact-section" class="agro-access__form default-form">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="auth_mode" value="login">
+                                    {% if login_form.non_field_errors %}
+                                    <div class="agro-access__feedback agro-access__feedback--error">
+                                        {% for error in login_form.non_field_errors %}{{ error }}{% endfor %}
+                                    </div>
+                                    {% endif %}
+                                    <div class="row clearfix">
+                                        <div class="form-group col-lg-12 col-md-12 col-sm-12">
+                                            <div class="field-label">Correo electr&oacute;nico</div>
+                                            <div class="field-inner">
+                                                <span class="alt-icon far fa-envelope"></span>
+                                                <input type="email" name="email" value="{{ login_form.email.value|default:'' }}" placeholder="tu@correo.com" required="">
+                                            </div>
+                                            {% if login_form.email.errors %}
+                                            <div class="agro-access__feedback agro-access__feedback--error">{{ login_form.email.errors|join:", " }}</div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="form-group col-lg-12 col-md-12 col-sm-12">
+                                            <div class="field-label">Contrase&ntilde;a</div>
+                                            <div class="field-inner">
+                                                <span class="alt-icon fa-solid fa-lock"></span>
+                                                <input type="password" name="password" placeholder="Ingresa tu contrase&ntilde;a" required="">
+                                            </div>
+                                            {% if login_form.password.errors %}
+                                            <div class="agro-access__feedback agro-access__feedback--error">{{ login_form.password.errors|join:", " }}</div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="form-group col-lg-12 col-md-12 col-sm-12">
+                                            <div class="agro-access__meta">
+                                                <label class="agro-access__check">
+                                                    <input type="checkbox" name="remember" {% if login_form.remember.value %}checked{% endif %}>
+                                                    <span>Recordar mi acceso</span>
+                                                </label>
+                                                <a href="#faqs-section">Necesito ayuda para ingresar</a>
+                                            </div>
+                                            <div class="agro-access__actions">
+                                                <button class="theme-btn btn-style-twelve" type="submit">
+                                                    <span class="btn-title">Ingresar</span>
+                                                </button>
+                                                <button class="theme-btn btn-style-eight agro-access__switch" type="button" data-auth-target="register"><span class="txt">Crear cuenta</span></button>
+                                            </div>
+                                            <div class="agro-access__note">Acceso orientado a inversionistas del entorno demo. Tu cuenta se vincula directamente con la base de datos de AgroTech.</div>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div class="agro-access__panel{% if active_auth_mode == 'register' %} is-active{% endif %}" data-auth-panel="register">
+                                <form method="post" action="#contact-section" class="agro-access__form default-form">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="auth_mode" value="register">
+                                    <div class="row clearfix">
+                                        <div class="form-group col-lg-12 col-md-12 col-sm-12">
+                                            <div class="field-label">Nombre completo</div>
+                                            <div class="field-inner">
+                                                <span class="alt-icon fa-solid fa-user"></span>
+                                                <input type="text" name="name" value="{{ register_form.name.value|default:'' }}" placeholder="Ej. Laura Perez" required="">
+                                            </div>
+                                            {% if register_form.name.errors %}
+                                            <div class="agro-access__feedback agro-access__feedback--error">{{ register_form.name.errors|join:", " }}</div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="form-group col-lg-12 col-md-12 col-sm-12">
+                                            <div class="field-label">Correo electr&oacute;nico</div>
+                                            <div class="field-inner">
+                                                <span class="alt-icon far fa-envelope"></span>
+                                                <input type="email" name="email" value="{{ register_form.email.value|default:'' }}" placeholder="tu@correo.com" required="">
+                                            </div>
+                                            {% if register_form.email.errors %}
+                                            <div class="agro-access__feedback agro-access__feedback--error">{{ register_form.email.errors|join:", " }}</div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="form-group col-lg-12 col-md-12 col-sm-12">
+                                            <div class="field-label">Contrase&ntilde;a</div>
+                                            <div class="field-inner">
+                                                <span class="alt-icon fa-solid fa-lock"></span>
+                                                <input type="password" name="password" placeholder="Crea una contrase&ntilde;a segura" required="">
+                                            </div>
+                                            {% if register_form.password.errors %}
+                                            <div class="agro-access__feedback agro-access__feedback--error">{{ register_form.password.errors|join:", " }}</div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="form-group col-lg-12 col-md-12 col-sm-12">
+                                            <div class="agro-access__actions">
+                                                <button class="theme-btn btn-style-twelve" type="submit">
+                                                    <span class="btn-title">Crear cuenta</span>
+                                                </button>
+                                                <button class="theme-btn btn-style-eight agro-access__switch" type="button" data-auth-target="login"><span class="txt">Ya tengo cuenta</span></button>
+                                            </div>
+                                            <div class="agro-access__note">La cuenta se crea como perfil inversionista y queda lista para iniciar sesi&oacute;n y registrar compras simuladas.</div>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -1323,6 +1432,9 @@
 <script src="{% static 'js/appear.js' %}"></script>
 <script src="{% static 'js/wow.js' %}"></script>
 <script src="{% static 'js/custom-script.js' %}"></script>
+{% if paypal_client_id %}
+<script src="https://www.paypal.com/sdk/js?client-id={{ paypal_client_id }}&currency=USD&intent=capture"></script>
+{% endif %}
 <script src="https://unpkg.com/lightweight-charts@5.0.0/dist/lightweight-charts.standalone.production.js"></script>
 <script src="{% static 'js/agrotech-token-chart.js' %}"></script>
 <!-- Template scripts -->
@@ -1330,3 +1442,4 @@
 </body>
 </html>
 
+  

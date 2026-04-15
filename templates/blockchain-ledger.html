@@ -1,0 +1,103 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Libro contable digital | AgroTech</title>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+<link href="{% static 'css/bootstrap.css' %}" rel="stylesheet">
+<link href="{% static 'css/style.css' %}" rel="stylesheet">
+<link href="{% static 'css/responsive.css' %}" rel="stylesheet">
+<link href="{% static 'css/investor-panel.css' %}" rel="stylesheet">
+<link href="{% static 'css/agrotech-ledger.css' %}" rel="stylesheet">
+</head>
+<body>
+  <div class="investor-shell">
+    <div class="auto-container">
+      <div class="investor-header">
+        <div class="investor-header__title">
+          <h1>Libro contable digital</h1>
+          <p>Registro secuencial y trazable de operaciones asociadas a los activos tokenizados. Cada compra queda registrada dentro del historial digital del entorno AgroTech.</p>
+        </div>
+        <a href="{% url 'investor_panel' %}" class="investor-header__back">Volver al panel</a>
+      </div>
+
+      <section class="agt-ledger" data-ledger-root>
+        <div class="agt-ledger__head">
+          <div>
+            <span class="agt-ledger__eyebrow">Libro contable digital</span>
+            <h4>Libro contable digital</h4>
+            <p>Registro secuencial y trazable de operaciones asociadas a los activos tokenizados. Cada compra queda registrada dentro del historial digital del entorno AgroTech.</p>
+          </div>
+          <div class="agt-ledger__controls">
+            <select data-ledger-status-filter>
+              <option value="all">Todos los estados</option>
+              <option value="confirmed">Confirmadas</option>
+              <option value="pending">Pendientes</option>
+              <option value="validating">Validando</option>
+              <option value="rejected">Rechazadas</option>
+            </select>
+            <select data-ledger-asset-filter>
+              <option value="all">Todos los activos</option>
+            </select>
+            <label class="agt-ledger__mine-toggle">
+              <input type="checkbox" data-ledger-mine-filter>
+              <span>Ver solo mis transacciones</span>
+            </label>
+            <button type="button" class="agt-ledger__pause" data-ledger-toggle-live>Pausar actividad en vivo</button>
+          </div>
+        </div>
+
+        <div class="row clearfix">
+          <div class="col-lg-4 col-md-12 col-sm-12">
+            <div class="agt-ledger-card agt-ledger-card--feed">
+              <div class="agt-ledger-card__head">
+                <h5>Historial en vivo</h5>
+                <span class="agt-ledger-card__live-pill">Actividad demo</span>
+              </div>
+              <div class="agt-ledger-feed" data-ledger-feed></div>
+            </div>
+          </div>
+          <div class="col-lg-8 col-md-12 col-sm-12">
+            <div class="agt-ledger-card agt-ledger-card--table">
+              <div class="agt-ledger-card__head">
+                <h5>Registro detallado / ledger</h5>
+                <button type="button" class="agt-ledger__expand" data-ledger-expand>Ver ledger completo</button>
+              </div>
+              <div class="agt-ledger-table-wrap">
+                <table class="agt-ledger-table">
+                  <thead>
+                    <tr>
+                      <th>Bloque</th>
+                      <th>Timestamp</th>
+                      <th>Operación</th>
+                      <th>Activo</th>
+                      <th>Wallet origen</th>
+                      <th>Wallet destino</th>
+                      <th>BTC</th>
+                      <th>AGT</th>
+                      <th>Hash</th>
+                      <th>Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody data-ledger-table-body></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="agt-ledger__footnote">
+          <p>Cada operación queda registrada dentro de un historial digital trazable y verificable.</p>
+          <p>La secuencia de registros permite auditar el origen, validación y acreditación de cada compra.</p>
+          <p>Este entorno demo representa la lógica de un libro contable digital inspirado en blockchain.</p>
+        </div>
+      </section>
+    </div>
+  </div>
+  {{ ledger_seed_entries|json_script:"agt-ledger-seed" }}
+  {{ ledger_asset_catalog|json_script:"agt-ledger-assets" }}
+  <script src="{% static 'js/agrotech-ledger.js' %}"></script>
+</body>
+</html>

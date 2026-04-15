@@ -7,17 +7,34 @@ function updateRoundFundingProgress(current, target, units) {
     var progressEl = timer.querySelector('.team-five__round-progress');
     var fillEl = timer.querySelector('.team-five__round-progress-fill');
     var contextEl = timer.querySelector('.team-five__round-context');
+    var heroTokenizedEl = document.getElementById('hero-tokenized-units');
+    var heroAvailableEl = document.getElementById('hero-available-units');
     if (!progressEl || !fillEl || !contextEl) return;
 
     var safeTarget = Number(target) || 0;
     var safeCurrent = Math.max(0, Number(current) || 0);
-    var safeUnits = Number(units) || Number(timer.getAttribute('data-tokenized-units')) || 0;
+    var baseRaised = Number(timer.getAttribute('data-raised')) || safeCurrent || 1;
+    var baseUnits = Number(timer.getAttribute('data-tokenized-units')) || Number(units) || 0;
+    var totalUnits = Number(timer.getAttribute('data-total-units')) || baseUnits;
+    var scaledUnits = Number(units);
+    var safeUnits = Number.isFinite(scaledUnits) && scaledUnits > 0
+        ? Math.round(scaledUnits)
+        : Math.round((safeCurrent / baseRaised) * baseUnits);
+    var availableUnits = Math.max(0, totalUnits - safeUnits);
     var percentage = safeTarget > 0 ? Math.min(100, Math.round((safeCurrent / safeTarget) * 100)) : 0;
 
     fillEl.style.width = percentage + '%';
     progressEl.setAttribute('aria-valuenow', String(percentage));
     progressEl.setAttribute('aria-label', 'Ronda financiada al ' + percentage + ' por ciento');
-    contextEl.innerHTML = 'Ronda activa &middot; ' + safeUnits + ' unidades tokenizadas &middot; ' + Math.round(safeCurrent) + ' de ' + Math.round(safeTarget) + ' millones COP';
+    contextEl.innerHTML = 'Ronda activa &middot; ' + safeUnits + ' unidades tokenizadas &middot; ' + availableUnits + ' unidades disponibles &middot; ' + Math.round(safeCurrent) + ' de ' + Math.round(safeTarget) + ' millones COP';
+
+    if (heroTokenizedEl) {
+        heroTokenizedEl.textContent = safeUnits;
+    }
+
+    if (heroAvailableEl) {
+        heroAvailableEl.textContent = availableUnits;
+    }
 }
 
 // Simula una variacion lenta tipo ticker financiero sobre el capital levantado.
@@ -30,12 +47,14 @@ function updateRoundFundingProgress(current, target, units) {
     var current = 28;
     var min = 24;
     var max = 32;
+    var baseUnits = 128;
+    var initialCurrent = current;
 
     function formatCurrency(value) {
         return Math.round(value).toLocaleString('es-CO');
     }
 
-    updateRoundFundingProgress(current, target, 128);
+    updateRoundFundingProgress(current, target, baseUnits);
 
     function tick() {
         var step = (Math.random() * 2.6) + 0.4;
@@ -55,9 +74,10 @@ function updateRoundFundingProgress(current, target, units) {
         var diff = next - current;
         var pct = ((diff / current) * 100).toFixed(1);
         current = next;
+        var scaledUnits = Math.max(0, Math.round((current / initialCurrent) * baseUnits));
 
         valueEl.textContent = formatCurrency(current) + ' / ' + formatCurrency(target) + ' millones COP';
-        updateRoundFundingProgress(current, target, 128);
+        updateRoundFundingProgress(current, target, scaledUnits);
         valueEl.classList.remove('is-up', 'is-down');
         deltaEl.classList.remove('up', 'down');
 
@@ -112,7 +132,8 @@ function updateRoundFundingProgress(current, target, units) {
 
 (function () {
     var card = document.querySelector('.ui-btc-card');
-    var tokenRateEl = document.querySelector('.agro-token-spot__rate-value');
+    var tokenPriceCopEl = document.getElementById('agrotech-token-price-cop');
+    var tokenRateBtcEl = document.getElementById('agrotech-token-rate-btc');
     if (!card) return;
 
     var numberEl = card.querySelector('.ui-btc-card__num');
@@ -132,8 +153,11 @@ function updateRoundFundingProgress(current, target, units) {
         minimumFractionDigits: 5,
         maximumFractionDigits: 5
     });
+    var integerFormatter = new Intl.NumberFormat('es-CO', {
+        maximumFractionDigits: 0
+    });
     var tokenBaseCop = 500000;
-    var fallbackTokenRate = tokenRateEl ? tokenRateEl.textContent : '';
+    var fallbackTokenRate = tokenRateBtcEl ? tokenRateBtcEl.textContent : '';
 
     function formatSignedPercent(value) {
         var prefix = value >= 0 ? '+' : '';
@@ -183,22 +207,65 @@ function updateRoundFundingProgress(current, target, units) {
             absoluteChangeEl.textContent = formatSignedUsd(absoluteChange);
             paintChange(changePct);
 
-            if (tokenRateEl) {
-                tokenRateEl.textContent = btcFormatter.format(tokenBtc) + ' BTC';
+            if (tokenPriceCopEl) {
+                tokenPriceCopEl.textContent = integerFormatter.format(tokenBaseCop) + ' COP';
             }
+
+            if (tokenRateBtcEl) {
+                tokenRateBtcEl.textContent = btcFormatter.format(tokenBtc) + ' BTC por token';
+            }
+
         } catch (error) {
             numberEl.textContent = fallbackValue;
             changeEl.textContent = fallbackChange;
             absoluteChangeEl.textContent = fallbackAbsolute;
             changeEl.classList.remove('is-up', 'is-down');
 
-            if (tokenRateEl) {
-                tokenRateEl.textContent = fallbackTokenRate;
+            if (tokenPriceCopEl) {
+                tokenPriceCopEl.textContent = integerFormatter.format(tokenBaseCop) + ' COP';
             }
+
+            if (tokenRateBtcEl) {
+                tokenRateBtcEl.textContent = fallbackTokenRate;
+            }
+
         }
     }
 
     updateBtcPrice();
     window.setInterval(updateBtcPrice, 60000);
+})();
+
+(function () {
+    var tabsRoot = document.getElementById('agro-auth-tabs');
+    if (!tabsRoot) return;
+
+    var tabs = tabsRoot.querySelectorAll('[data-auth-target]');
+    var panels = document.querySelectorAll('[data-auth-panel]');
+
+    function activate(mode) {
+        tabs.forEach(function (tab) {
+            tab.classList.toggle('is-active', tab.getAttribute('data-auth-target') === mode);
+        });
+
+        panels.forEach(function (panel) {
+            panel.classList.toggle('is-active', panel.getAttribute('data-auth-panel') === mode);
+        });
+    }
+
+    var initialMode = tabsRoot.getAttribute('data-active-mode') || 'login';
+    activate(initialMode);
+
+    tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            activate(tab.getAttribute('data-auth-target'));
+        });
+    });
+
+    document.querySelectorAll('.agro-access__switch[data-auth-target]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            activate(button.getAttribute('data-auth-target'));
+        });
+    });
 })();
 

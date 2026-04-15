@@ -3106,3 +3106,63 @@ body.home-six .scroll-to-top:hover{
         width: clamp(120px, 34vw, 210px);
     }
 }
+
+.home-six .agro-access__tabs{
+    display: flex;
+    gap: 10px;
+    margin: 18px 0 22px;
+}
+
+.home-six .agro-access__tab{
+    appearance: none;
+    -webkit-appearance: none;
+    flex: 1 1 0;
+    border: 1px solid rgba(255,255,255,.16);
+    background: rgba(255,255,255,.06);
+    color: #dce5df;
+    border-radius: 999px;
+    padding: 12px 14px;
+    font-weight: 700;
+    text-align: center;
+    cursor: pointer;
+    transition: .2s ease;
+}
+
+.home-six .agro-access__tab.is-active{
+    background: #46b267;
+    border-color: #46b267;
+    color: #fff;
+}
+
+.home-six .agro-access__panel{
+    display: none !important;
+}
+
+.home-six .agro-access__panel.is-active{
+    display: block !important;
+}
+
+.home-six .agro-access__feedback{
+    margin-bottom: 16px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.home-six .agro-access__feedback--success{
+    background: rgba(70, 178, 103, .15);
+    color: #8be0a3;
+    border: 1px solid rgba(70, 178, 103, .28);
+}
+
+.home-six .agro-access__feedback--error{
+    background: rgba(220, 88, 88, .12);
+    color: #ffb1b1;
+    border: 1px solid rgba(220, 88, 88, .24);
+}
+
+.home-six .agro-access__hint-link{
+    color: #88f0a8;
+    font-weight: 700;
+}
