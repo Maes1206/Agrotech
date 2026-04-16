@@ -21,6 +21,7 @@
 
       {% if wallet_snapshot %}
       <section class="agt-wallet-summary agt-wallet-summary--detail" data-wallet-summary>
+        <div class="agt-wallet-summary__inner">
         <div class="agt-wallet-summary__hero">
           <span class="agt-wallet-summary__eyebrow">Wallet AGT</span>
           <h3>Tu capacidad de inversión está lista para este activo</h3>
@@ -34,7 +35,11 @@
           </article>
           <article class="agt-stat-card">
             <span>Disponible para invertir</span>
-            <strong>$<span data-wallet-equivalent>{{ wallet_snapshot.equivalent_cop|floatformat:0|intcomma }}</span> COP</strong>
+            <strong class="agt-stat-card__metric">
+              <span class="agt-stat-card__prefix">$</span>
+              <span class="agt-stat-card__value" data-wallet-equivalent>{{ wallet_snapshot.equivalent_cop_compact }}</span>
+              <span class="agt-stat-card__suffix">COP</span>
+            </strong>
             <small>Equivalente COP del wallet</small>
           </article>
           <article class="agt-stat-card">
@@ -44,14 +49,22 @@
           </article>
           <article class="agt-stat-card">
             <span>Inversión total</span>
-            <strong>$<span data-wallet-total-invested>{{ wallet_snapshot.total_invested|floatformat:0|intcomma }}</span> COP</strong>
+            <strong class="agt-stat-card__metric">
+              <span class="agt-stat-card__prefix">$</span>
+              <span class="agt-stat-card__value" data-wallet-total-invested>{{ wallet_snapshot.total_invested_compact }}</span>
+              <span class="agt-stat-card__suffix">COP</span>
+            </strong>
             <small>Acumulado histórico</small>
           </article>
           <article class="agt-stat-card">
             <span>Rendimiento estimado</span>
-            <strong><span data-wallet-yield>{{ wallet_snapshot.estimated_return_pct|floatformat:2 }}</span>%</strong>
+            <strong class="agt-stat-card__metric agt-stat-card__metric--compact">
+              <span class="agt-stat-card__value" data-wallet-yield>{{ wallet_snapshot.estimated_return_pct|floatformat:2 }}</span>
+              <span class="agt-stat-card__suffix">%</span>
+            </strong>
             <small>Promedio del portafolio</small>
           </article>
+        </div>
         </div>
       </section>
       {% endif %}

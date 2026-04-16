@@ -245,11 +245,16 @@ function updateRoundFundingProgress(current, target, units) {
 
     function activate(mode) {
         tabs.forEach(function (tab) {
-            tab.classList.toggle('is-active', tab.getAttribute('data-auth-target') === mode);
+            var isActive = tab.getAttribute('data-auth-target') === mode;
+            tab.classList.toggle('is-active', isActive);
+            tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            tab.setAttribute('tabindex', isActive ? '0' : '-1');
         });
 
         panels.forEach(function (panel) {
-            panel.classList.toggle('is-active', panel.getAttribute('data-auth-panel') === mode);
+            var isActive = panel.getAttribute('data-auth-panel') === mode;
+            panel.classList.toggle('is-active', isActive);
+            panel.hidden = !isActive;
         });
     }
 
@@ -259,6 +264,19 @@ function updateRoundFundingProgress(current, target, units) {
     tabs.forEach(function (tab) {
         tab.addEventListener('click', function () {
             activate(tab.getAttribute('data-auth-target'));
+        });
+
+        tab.addEventListener('keydown', function (event) {
+            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+
+            event.preventDefault();
+
+            var nextIndex = Array.prototype.indexOf.call(tabs, tab) + (event.key === 'ArrowRight' ? 1 : -1);
+            if (nextIndex < 0) nextIndex = tabs.length - 1;
+            if (nextIndex >= tabs.length) nextIndex = 0;
+
+            tabs[nextIndex].focus();
+            activate(tabs[nextIndex].getAttribute('data-auth-target'));
         });
     });
 

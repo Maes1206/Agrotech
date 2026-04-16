@@ -201,6 +201,31 @@ class InvestorPanelTests(TestCase):
             tokens_available=100,
             token_price=Decimal("500000.00"),
         )
+        self.secondary_asset = BiologicalAsset.objects.create(
+            code="ASSET-P-02",
+            name="Activo Panel Secundario",
+            asset_type=BiologicalAsset.INDIVIDUAL,
+            category=self.category,
+            producer=self.producer,
+            farm=self.farm,
+            initial_weight=Decimal("380.00"),
+            current_weight=Decimal("401.00"),
+            initial_value=Decimal("1800000.00"),
+            projected_value=Decimal("2150000.00"),
+            estimated_return_pct=Decimal("14.00"),
+            start_date="2026-06-01",
+            estimated_sale_date="2026-12-01",
+            tokenized_units=80,
+            available_units=80,
+            is_featured=False,
+            display_order=2,
+        )
+        self.secondary_tokenized_asset = TokenizedAsset.objects.create(
+            asset=self.secondary_asset,
+            total_tokens=80,
+            tokens_available=80,
+            token_price=Decimal("450000.00"),
+        )
 
     def test_investor_panel_requires_login(self):
         response = self.client.get(reverse("investor_panel"))
@@ -230,3 +255,56 @@ class InvestorPanelTests(TestCase):
         self.assertEqual(self.asset.available_units, 74)
         self.assertTrue(TokenHolding.objects.filter(user=self.user, tokenized_asset=self.tokenized_asset, quantity=26).exists())
         self.assertEqual(TokenTransaction.objects.filter(user=self.user).count(), 1)
+
+    def test_investor_panel_buy_persists_linked_card_in_session(self):
+        self.client.login(username="paneluser", password="ClaveSegura123*")
+
+        response = self.client.post(
+            reverse("investor_panel"),
+            data={
+                "btc_amount": "0.05000",
+                "panel_action": "buy",
+                "linked_card_holder": "Panel User",
+                "linked_card_last4": "4242",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.client.session["agrotech_linked_card"], {"holder": "Panel User", "last4": "4242"})
+        self.assertEqual(response.context["linked_card"], {"holder": "Panel User", "last4": "4242"})
+
+    def test_investor_panel_renders_server_linked_card(self):
+        self.client.login(username="paneluser", password="ClaveSegura123*")
+        session = self.client.session
+        session["agrotech_linked_card"] = {"holder": "Panel User", "last4": "4242"}
+        session.save()
+
+        response = self.client.get(reverse("investor_panel"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-linked-last4="4242"')
+        self.assertContains(response, "**** **** **** 4242")
+        self.assertNotContains(response, 'class="wallet wallet--empty"')
+
+    def test_investor_panel_includes_selected_non_featured_asset_in_opportunities(self):
+        self.client.login(username="paneluser", password="ClaveSegura123*")
+
+        response = self.client.get(reverse("investor_panel"), data={"asset": self.secondary_asset.code})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["selected_asset"].asset.code, self.secondary_asset.code)
+        selected_cards = [
+            item for item in response.context["opportunity_assets"]
+            if item["asset"].code == self.secondary_asset.code
+        ]
+        self.assertEqual(len(selected_cards), 1)
+        self.assertTrue(selected_cards[0]["is_selected"])
+
+    def test_investor_panel_summary_participation_is_expressed_as_percentage(self):
+        self.client.login(username="paneluser", password="ClaveSegura123*")
+        buy_tokens(self.user, self.tokenized_asset, 26)
+
+        response = self.client.get(reverse("investor_panel"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["summary_participation_pct"], Decimal("26.00"))

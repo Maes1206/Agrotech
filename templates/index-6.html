@@ -804,7 +804,7 @@
                         <div class="radio-icon"></div>
                         <div class="inner-box">
                             <div class="lower-box">
-                                <div class="text">Concept Generation Team Assemble</div>
+                                <div class="text">Holding: los inversores pueden ahorrar</div>
                             </div>
                             <div class="date"><span>January 2022</span></div>
                         </div>
@@ -815,7 +815,7 @@
                         <div class="inner-box">
                             <div class="date"><span>March 2022</span></div>
                             <div class="lower-box">
-                                <div class="text">Concept Generation Team Assemble</div>
+                                <div class="text">Si desean, pueden vender tokens</div>
                             </div>
                         </div>
                     </div>
@@ -1224,7 +1224,6 @@
                 <div class="row clearfix">
                     <div class="info-col col-xl-6 col-lg-6 col-md-12">
                         <div class="agro-access__intro">
-                            <span class="agro-access__eyebrow">Acceso a plataforma</span>
                             <h3>&Uacute;nete a AgroTech</h3>
                             <div class="agro-access__intro-text">Ingresa a un entorno digital dise&ntilde;ado para inversionistas, productores y aliados que necesitan trazabilidad, seguimiento del activo y visibilidad del rendimiento en cada etapa.</div>
                             <div class="agro-access__foot">
@@ -1237,15 +1236,15 @@
                     <div class="form-col col-xl-6 col-lg-6 col-md-12">
                         <div class="agro-access__card">
                             <div class="agro-access__card-top">
-                                <span class="agro-access__status">{% if request.user.is_authenticated %}Sesion activa{% else %}Ingreso seguro{% endif %}</span>
                                 {% if request.user.is_authenticated %}
                                 <a href="{% url 'investor_panel' %}" class="agro-access__link">Abrir panel</a>
                                 {% else %}
                                 <a href="#token-sale" class="agro-access__link">Ver oportunidades</a>
                                 {% endif %}
                             </div>
-                            <h4>{% if request.user.is_authenticated %}Tu perfil AgroTech est&aacute; listo{% else %}Accede a tu perfil AgroTech{% endif %}</h4>
-                            <div class="agro-access__card-intro">
+                            <div class="agro-access__card-body">
+                            <h4 id="agro-access-title">{% if request.user.is_authenticated %}Tu perfil AgroTech est&aacute; listo{% else %}Accede a tu perfil AgroTech{% endif %}</h4>
+                            <div class="agro-access__card-intro" id="agro-access-description">
                                 {% if request.user.is_authenticated %}
                                 Ya iniciaste sesi&oacute;n como <strong>{{ request.user.first_name|default:request.user.username }}</strong>. Puedes continuar directamente al panel del inversionista para calcular y comprar tokens.
                                 {% else %}
@@ -1262,9 +1261,9 @@
                             </div>
                             <div class="agro-access__note">Desde el panel puedes calcular BTC a AGT, comprar tokens y revisar tu portafolio actualizado.</div>
                             {% else %}
-                            <div class="agro-access__tabs" id="agro-auth-tabs" data-active-mode="{{ active_auth_mode|default:'login' }}">
-                                <button type="button" class="agro-access__tab{% if active_auth_mode != 'register' %} is-active{% endif %}" data-auth-target="login">Ingresar</button>
-                                <button type="button" class="agro-access__tab{% if active_auth_mode == 'register' %} is-active{% endif %}" data-auth-target="register">Crear cuenta</button>
+                            <div class="agro-access__assist">
+                                <p class="agro-access__assist-copy">Acceso orientado a inversionistas del entorno demo. Crea tu perfil o ingresa para continuar con trazabilidad, compras simuladas y panel del activo.</p>
+                                <a href="#faqs-section" class="agro-access__hint-link">Necesito ayuda para ingresar</a>
                             </div>
 
                             {% if messages %}
@@ -1275,8 +1274,8 @@
                                 {% endfor %}
                             {% endif %}
 
-                            <div class="agro-access__panel{% if active_auth_mode != 'register' %} is-active{% endif %}" data-auth-panel="login">
-                                <form method="post" action="#contact-section" class="agro-access__form default-form">
+                            <div class="agro-access__panel{% if active_auth_mode != 'register' %} is-active{% endif %}" id="agro-auth-panel-login" data-auth-panel="login" role="tabpanel" aria-labelledby="agro-auth-tab-login"{% if active_auth_mode == 'register' %} hidden{% endif %}>
+                                <form method="post" action="#contact-section" class="agro-access__form default-form" aria-describedby="agro-access-description">
                                     {% csrf_token %}
                                     <input type="hidden" name="auth_mode" value="login">
                                     {% if login_form.non_field_errors %}
@@ -1286,20 +1285,20 @@
                                     {% endif %}
                                     <div class="row clearfix">
                                         <div class="form-group col-lg-12 col-md-12 col-sm-12">
-                                            <div class="field-label">Correo electr&oacute;nico</div>
+                                            <label class="field-label" for="agro-login-email">Correo electr&oacute;nico</label>
                                             <div class="field-inner">
                                                 <span class="alt-icon far fa-envelope"></span>
-                                                <input type="email" name="email" value="{{ login_form.email.value|default:'' }}" placeholder="tu@correo.com" required="">
+                                                <input id="agro-login-email" type="email" name="email" value="{{ login_form.email.value|default:'' }}" placeholder="tu@correo.com" autocomplete="email" inputmode="email" required="">
                                             </div>
                                             {% if login_form.email.errors %}
                                             <div class="agro-access__feedback agro-access__feedback--error">{{ login_form.email.errors|join:", " }}</div>
                                             {% endif %}
                                         </div>
                                         <div class="form-group col-lg-12 col-md-12 col-sm-12">
-                                            <div class="field-label">Contrase&ntilde;a</div>
+                                            <label class="field-label" for="agro-login-password">Contrase&ntilde;a</label>
                                             <div class="field-inner">
                                                 <span class="alt-icon fa-solid fa-lock"></span>
-                                                <input type="password" name="password" placeholder="Ingresa tu contrase&ntilde;a" required="">
+                                                <input id="agro-login-password" type="password" name="password" placeholder="Ingresa tu contrase&ntilde;a" autocomplete="current-password" required="">
                                             </div>
                                             {% if login_form.password.errors %}
                                             <div class="agro-access__feedback agro-access__feedback--error">{{ login_form.password.errors|join:", " }}</div>
@@ -1311,7 +1310,6 @@
                                                     <input type="checkbox" name="remember" {% if login_form.remember.value %}checked{% endif %}>
                                                     <span>Recordar mi acceso</span>
                                                 </label>
-                                                <a href="#faqs-section">Necesito ayuda para ingresar</a>
                                             </div>
                                             <div class="agro-access__actions">
                                                 <button class="theme-btn btn-style-twelve" type="submit">
@@ -1325,36 +1323,36 @@
                                 </form>
                             </div>
 
-                            <div class="agro-access__panel{% if active_auth_mode == 'register' %} is-active{% endif %}" data-auth-panel="register">
-                                <form method="post" action="#contact-section" class="agro-access__form default-form">
+                            <div class="agro-access__panel{% if active_auth_mode == 'register' %} is-active{% endif %}" id="agro-auth-panel-register" data-auth-panel="register" role="tabpanel" aria-labelledby="agro-auth-tab-register"{% if active_auth_mode != 'register' %} hidden{% endif %}>
+                                <form method="post" action="#contact-section" class="agro-access__form default-form" aria-describedby="agro-access-description">
                                     {% csrf_token %}
                                     <input type="hidden" name="auth_mode" value="register">
                                     <div class="row clearfix">
                                         <div class="form-group col-lg-12 col-md-12 col-sm-12">
-                                            <div class="field-label">Nombre completo</div>
+                                            <label class="field-label" for="agro-register-name">Nombre completo</label>
                                             <div class="field-inner">
                                                 <span class="alt-icon fa-solid fa-user"></span>
-                                                <input type="text" name="name" value="{{ register_form.name.value|default:'' }}" placeholder="Ej. Laura Perez" required="">
+                                                <input id="agro-register-name" type="text" name="name" value="{{ register_form.name.value|default:'' }}" placeholder="Ej. Laura Perez" autocomplete="name" required="">
                                             </div>
                                             {% if register_form.name.errors %}
                                             <div class="agro-access__feedback agro-access__feedback--error">{{ register_form.name.errors|join:", " }}</div>
                                             {% endif %}
                                         </div>
                                         <div class="form-group col-lg-12 col-md-12 col-sm-12">
-                                            <div class="field-label">Correo electr&oacute;nico</div>
+                                            <label class="field-label" for="agro-register-email">Correo electr&oacute;nico</label>
                                             <div class="field-inner">
                                                 <span class="alt-icon far fa-envelope"></span>
-                                                <input type="email" name="email" value="{{ register_form.email.value|default:'' }}" placeholder="tu@correo.com" required="">
+                                                <input id="agro-register-email" type="email" name="email" value="{{ register_form.email.value|default:'' }}" placeholder="tu@correo.com" autocomplete="email" inputmode="email" required="">
                                             </div>
                                             {% if register_form.email.errors %}
                                             <div class="agro-access__feedback agro-access__feedback--error">{{ register_form.email.errors|join:", " }}</div>
                                             {% endif %}
                                         </div>
                                         <div class="form-group col-lg-12 col-md-12 col-sm-12">
-                                            <div class="field-label">Contrase&ntilde;a</div>
+                                            <label class="field-label" for="agro-register-password">Contrase&ntilde;a</label>
                                             <div class="field-inner">
                                                 <span class="alt-icon fa-solid fa-lock"></span>
-                                                <input type="password" name="password" placeholder="Crea una contrase&ntilde;a segura" required="">
+                                                <input id="agro-register-password" type="password" name="password" placeholder="Crea una contrase&ntilde;a segura" autocomplete="new-password" required="">
                                             </div>
                                             {% if register_form.password.errors %}
                                             <div class="agro-access__feedback agro-access__feedback--error">{{ register_form.password.errors|join:", " }}</div>
@@ -1373,6 +1371,7 @@
                                 </form>
                             </div>
                             {% endif %}
+                            </div>
                         </div>
                     </div>
                 </div>

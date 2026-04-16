@@ -29,6 +29,9 @@ from .models import (
 from .services import buy_tokens, ensure_wallet, invest_with_agt_wallet
 
 
+LINKED_CARD_SESSION_KEY = "agrotech_linked_card"
+
+
 def _asset_image_path(asset):
     image_index = ((asset.display_order or 1) - 1) % 6 + 1
     return f"images/Tokens/{image_index}.jpg"
@@ -58,6 +61,37 @@ def _authenticate_with_email(email, password):
     if user.check_password(password) and user.is_active:
         return user
     return None
+
+
+def _sanitize_linked_card_payload(holder_name="", last4=""):
+    holder = " ".join(str(holder_name or "").split())
+    digits = "".join(ch for ch in str(last4 or "") if ch.isdigit())
+    if len(digits) > 4:
+        digits = digits[-4:]
+    if len(digits) != 4:
+        return None
+    return {
+        "holder": holder[:18],
+        "last4": digits,
+    }
+
+
+def _get_linked_card(request):
+    payload = request.session.get(LINKED_CARD_SESSION_KEY)
+    if not isinstance(payload, dict):
+        return None
+    return _sanitize_linked_card_payload(
+        holder_name=payload.get("holder", ""),
+        last4=payload.get("last4", ""),
+    )
+
+
+def _store_linked_card(request, holder_name="", last4=""):
+    payload = _sanitize_linked_card_payload(holder_name=holder_name, last4=last4)
+    if payload:
+        request.session[LINKED_CARD_SESSION_KEY] = payload
+        request.session.modified = True
+    return payload
 
 
 def _build_home_context(active_auth_mode="login", login_form=None, register_form=None):
@@ -155,6 +189,15 @@ def _estimate_participants(tokenized_asset):
     return max(1, math.ceil(tokenized_asset.tokens_sold / 6))
 
 
+def _format_compact_millions(value):
+    amount = Decimal(value or 0)
+    if amount >= Decimal("1000000"):
+        return f"{(amount / Decimal('1000000')).quantize(Decimal('0.01'))}M"
+    if amount == amount.to_integral_value():
+        return f"{int(amount)}"
+    return f"{amount.quantize(Decimal('0.01'))}"
+
+
 def _build_wallet_snapshot(user, portfolio=None, transactions=None):
     wallet = ensure_wallet(user)
     if portfolio is None:
@@ -184,8 +227,10 @@ def _build_wallet_snapshot(user, portfolio=None, transactions=None):
         "wallet": wallet,
         "tokens_available": wallet.agt_balance,
         "equivalent_cop": Decimal(wallet.equivalent_cop),
+        "equivalent_cop_compact": _format_compact_millions(wallet.equivalent_cop),
         "portfolio_assets": len(portfolio_items),
         "total_invested": total_invested,
+        "total_invested_compact": _format_compact_millions(total_invested),
         "portfolio_value": sum(
             (Decimal(holding.quantity) * holding.tokenized_asset.token_price) for holding in portfolio_items
         ),
@@ -651,7 +696,7 @@ def invest_asset_tokens(request, code):
 @login_required
 @ensure_csrf_cookie
 def investor_panel(request):
-    available_assets = (
+    available_assets = list(
         TokenizedAsset.objects.select_related("asset", "asset__producer", "asset__farm", "asset__category")
         .filter(asset__status=BiologicalAsset.AVAILABLE)
         .order_by("asset__display_order", "asset__name")
@@ -661,7 +706,10 @@ def investor_panel(request):
         or request.GET.get("asset")
         or ""
     ).strip()
-    selected_asset = available_assets.filter(asset__code=selected_asset_code).first() or available_assets.first()
+    selected_asset = next(
+        (asset for asset in available_assets if asset.asset.code == selected_asset_code),
+        None,
+    ) or (available_assets[0] if available_assets else None)
 
     if not selected_asset:
         return render(
@@ -696,6 +744,11 @@ def investor_panel(request):
                 else:
                     buy_result = buy_tokens(request.user, selected_asset, calculation["estimated_tokens"])
                     if buy_result.success:
+                        _store_linked_card(
+                            request,
+                            holder_name=request.POST.get("linked_card_holder", ""),
+                            last4=request.POST.get("linked_card_last4", ""),
+                        )
                         selected_asset.refresh_from_db()
                         calculation = _build_investor_quote(panel_form.cleaned_data["btc_amount"], selected_asset)
                         purchase_result = {
@@ -735,6 +788,11 @@ def investor_panel(request):
             .get("total")
             or Decimal("0.00")
         )
+    summary_participation_pct = (
+        Decimal(summary_holding.participation * 100).quantize(Decimal("0.01"))
+        if summary_holding
+        else Decimal("0.00")
+    )
     selected_asset_holding = portfolio.filter(tokenized_asset=selected_asset).first()
     selected_asset_total_invested = (
         TokenTransaction.objects.filter(user=request.user, tokenized_asset=selected_asset)
@@ -755,15 +813,18 @@ def investor_panel(request):
         )
     }
 
-    opportunity_assets = (
-        BiologicalAsset.objects.select_related("producer", "farm", "category", "tokenization")
-        .filter(is_featured=True, status=BiologicalAsset.AVAILABLE)
-        .order_by("display_order", "estimated_sale_date")[:8]
+    opportunity_assets = list(
+        TokenizedAsset.objects.select_related("asset", "asset__producer", "asset__farm", "asset__category")
+        .filter(asset__is_featured=True, asset__status=BiologicalAsset.AVAILABLE)
+        .order_by("asset__display_order", "asset__estimated_sale_date")[:8]
     )
+    if selected_asset and all(item.pk != selected_asset.pk for item in opportunity_assets):
+        opportunity_assets = [selected_asset, *opportunity_assets[:7]]
     wallet_snapshot = _build_wallet_snapshot(request.user, portfolio=portfolio, transactions=transactions)
     portfolio_balance_cop = wallet_snapshot["portfolio_value"]
     portfolio_tokens = sum(holding.quantity for holding in portfolio)
     holder_name = request.user.get_full_name().strip() or request.user.username.upper()
+    linked_card = _get_linked_card(request)
     selected_contract = (
         DigitalContract.objects.select_related("blockchain_record")
         .filter(user=request.user, tokenized_asset=selected_asset)
@@ -795,10 +856,12 @@ def investor_panel(request):
         "portfolio_balance_cop": portfolio_balance_cop,
         "portfolio_tokens": portfolio_tokens,
         "holder_name": holder_name,
+        "linked_card": linked_card,
         "wallet_snapshot": wallet_snapshot,
         "summary_asset": summary_asset,
         "summary_holding": summary_holding,
         "summary_total_invested": summary_total_invested,
+        "summary_participation_pct": summary_participation_pct,
         "latest_transaction": latest_transaction,
         "selected_asset_code": selected_asset.asset.code,
         "selected_asset_holding": selected_asset_holding,
@@ -810,13 +873,13 @@ def investor_panel(request):
         "opportunity_assets": [
             {
                 **_build_asset_snapshot(
-                    asset.tokenization,
+                    asset,
                     user=request.user,
-                    holding_quantity=holding_quantity_by_asset.get(asset.code, 0),
-                    total_invested=invested_totals_by_asset.get(asset.code, Decimal("0.00")),
+                    holding_quantity=holding_quantity_by_asset.get(asset.asset.code, 0),
+                    total_invested=invested_totals_by_asset.get(asset.asset.code, Decimal("0.00")),
                 ),
-                "is_selected": asset.code == selected_asset.asset.code,
-                "has_high_demand": _resolve_investment_badge(asset.tokenization)[1] in {"hot", "almost"},
+                "is_selected": asset.asset.code == selected_asset.asset.code,
+                "has_high_demand": _resolve_investment_badge(asset)[1] in {"hot", "almost"},
             }
             for asset in opportunity_assets
         ],

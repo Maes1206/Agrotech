@@ -1045,7 +1045,7 @@
     }
 
     .home-six .agro-access .outer-container{
-        padding: 42px 36px;
+        padding: clamp(24px, 4vw, 42px);
     }
 
     .home-six .agro-access__intro{
@@ -1078,6 +1078,108 @@
 }
 
 @media only screen and (max-width: 767px){
+    .home-six .mobile-app-two .text-col .row{
+        display: none;
+    }
+
+    .home-six .roadmap-five{
+        padding: 88px 0 56px;
+    }
+
+    .home-six .roadmap-five .title-box-three{
+        margin-bottom: 48px;
+    }
+
+    .home-six .roadmap-five .carousel-box{
+        margin-bottom: -8px;
+    }
+
+    .home-six .roadmap-five .owl-theme .roadmap-block-five{
+        height: 270px;
+        padding: 0 12px;
+    }
+
+    .home-six .roadmap-five .roadmap-block-five .inner-box{
+        height: 188px;
+    }
+
+    .home-six .roadmap-five .roadmap-block-five.down-side{
+        padding-top: 82px;
+    }
+
+    .home-six .roadmap-five .roadmap-block-five .inner-box .date{
+        font-size: 18px;
+        line-height: 1.35;
+    }
+
+    .home-six .roadmap-five .roadmap-block-five .lower-box{
+        padding: 18px 16px;
+    }
+
+    .home-six .roadmap-five .roadmap-block-five .lower-box:before{
+        height: 42px;
+    }
+
+    .home-six .team-five{
+        padding-top: 56px;
+    }
+
+    .home-six .team-five .title-box-three{
+        margin-bottom: 38px;
+    }
+
+    .home-six .banner-six .upper-content{
+        margin-bottom: 10px;
+    }
+
+    .home-six .banner-six .upper-content .text-col{
+        margin-bottom: 0;
+    }
+
+    .home-six .banner-six .upper-content .text-col .inner{
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .home-six .banner-six .upper-content .links-box{
+        position: relative;
+        z-index: 3;
+        padding-top: 18px;
+    }
+
+    .home-six .banner-six .upper-content .links-box .theme-btn{
+        position: relative;
+        z-index: 3;
+    }
+
+    .home-six .banner-six .upper-content .image-col{
+        margin-top: 0;
+        position: relative;
+        z-index: 1;
+    }
+
+    .home-six .banner-six .upper-content .image-col .image{
+        position: relative;
+        top: auto;
+        left: auto;
+        right: auto;
+        bottom: auto;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        max-width: 315px;
+        margin: 0 auto;
+        z-index: 1;
+        pointer-events: none;
+        transform: translateY(72px);
+        will-change: transform;
+    }
+
+    .home-six .banner-six .lower-content{
+        padding-top: 16px;
+    }
+
     .home-six .team-five .team-five__round-timer{
         gap: 8px;
         padding: 12px 16px 14px;
@@ -1124,16 +1226,16 @@
     }
 
     .home-six .agro-access .outer-container{
-        padding: 28px 20px;
+        padding: 20px 18px 24px;
         border-radius: 26px;
     }
 
     .home-six .agro-access__intro h3{
-        font-size: 36px;
+        font-size: clamp(2rem, 8vw, 2.4rem);
     }
 
     .home-six .agro-access__intro-text{
-        font-size: 16px;
+        font-size: 0.98rem;
     }
 
     .home-six .agro-access__benefits li{
@@ -1151,18 +1253,16 @@
     }
 
     .home-six .agro-access__card{
-        padding: 22px 18px;
+        padding: 18px 16px;
         border-radius: 22px;
     }
 
-    .home-six .agro-access__card-top,
     .home-six .agro-access__meta{
-        flex-direction: column;
-        align-items: flex-start;
+        justify-items: start;
     }
 
     .home-six .agro-access__card h4{
-        font-size: 28px;
+        font-size: clamp(1.65rem, 7vw, 1.9rem);
     }
 
     .token-sale-five .agro-yield-card{
@@ -1272,7 +1372,8 @@
     }
 
     .home-six .banner-six .upper-content .image-col .image img{
-        max-width: 250px;
+        max-width: 315px;
+        display: block;
     }
 
     .home-six .banner-six .upper-content .text{
@@ -1300,8 +1401,16 @@
     }
 
     .home-six .banner-six .upper-content .image-col .image{
+        position: relative;
+        top: auto;
+        left: auto;
         max-width: 280px;
         margin: 0 auto;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 0;
+        pointer-events: none;
     }
 
     .home-six .banner-six .upper-content .image-col .image img{
@@ -1633,14 +1742,15 @@ body.home-six .page-wrapper{
 }
 
 .home-six .contact-three.agro-access{
-    padding: 80px 0 110px;
+    padding: clamp(72px, 10vw, 120px) 0 clamp(88px, 11vw, 110px);
+    overflow: clip;
 }
 
 .home-six .agro-access .outer-container{
     position: relative;
     overflow: hidden;
-    padding: 52px 56px;
-    border-radius: 34px;
+    padding: clamp(20px, 4vw, 56px);
+    border-radius: clamp(24px, 4vw, 36px);
     background: linear-gradient(135deg, #18261f 0%, #22352c 52%, #1b2c24 100%);
     border: 1px solid rgba(132, 230, 160, 0.12);
     box-shadow: 0 24px 54px rgba(10, 17, 14, 0.22);
@@ -1659,10 +1769,10 @@ body.home-six .page-wrapper{
 .home-six .agro-access .outer-container:after{
     content: "";
     position: absolute;
-    right: -70px;
-    bottom: -110px;
-    width: 320px;
-    height: 320px;
+    right: -14%;
+    bottom: -16%;
+    width: clamp(220px, 32vw, 320px);
+    height: clamp(220px, 32vw, 320px);
     border-radius: 50%;
     background: rgba(132,230,160,0.05);
     pointer-events: none;
@@ -1672,64 +1782,50 @@ body.home-six .page-wrapper{
     position: relative;
     z-index: 1;
     align-items: center;
+    row-gap: clamp(28px, 5vw, 56px);
 }
 
 .home-six .agro-access__intro{
-    padding-right: 36px;
+    max-width: 38rem;
+    padding-right: 0;
     color: rgba(235,245,239,0.86);
-}
-
-.home-six .agro-access__eyebrow{
-    display: inline-flex;
-    align-items: center;
-    min-height: 34px;
-    padding: 8px 14px;
-    border-radius: 999px;
-    background: rgba(132,230,160,0.10);
-    border: 1px solid rgba(132,230,160,0.18);
-    color: #84e6a0;
-    font-size: 11px;
-    line-height: 1;
-    font-weight: 800;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    margin-bottom: 22px;
 }
 
 .home-six .agro-access__intro h3{
     color: #ffffff;
-    font-size: 48px;
-    line-height: 1.06em;
+    font-size: clamp(2rem, 6vw, 3.25rem);
+    line-height: 1.04;
     letter-spacing: -0.03em;
-    margin-bottom: 18px;
+    margin-bottom: clamp(0.9rem, 2vw, 1.2rem);
+    text-wrap: balance;
 }
 
 .home-six .agro-access__intro-text{
-    max-width: 520px;
+    max-width: 34rem;
     color: rgba(228,238,232,0.78);
-    font-size: 18px;
-    line-height: 1.85em;
-    margin-bottom: 22px;
+    font-size: clamp(0.98rem, 2vw, 1.1rem);
+    line-height: 1.72;
+    margin-bottom: clamp(1.1rem, 2.6vw, 1.55rem);
 }
 
 .home-six .agro-access__foot{
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 0.75rem;
     margin-top: 10px;
 }
 
 .home-six .agro-access__chip{
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    min-height: 38px;
-    padding: 8px 14px;
+    gap: 0.5rem;
+    min-height: 2.5rem;
+    padding: 0.58rem 0.92rem;
     border-radius: 999px;
     background: rgba(255,255,255,0.05);
     border: 1px solid rgba(255,255,255,0.08);
     color: rgba(239,246,241,0.82);
-    font-size: 13px;
+    font-size: clamp(0.78rem, 1.7vw, 0.86rem);
     line-height: 1;
     font-weight: 600;
 }
@@ -1739,124 +1835,136 @@ body.home-six .page-wrapper{
 }
 
 .home-six .agro-access__card{
-    max-width: 470px;
-    margin-left: auto;
-    padding: 30px;
-    border-radius: 28px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.08) 100%);
-    border: 1px solid rgba(255,255,255,0.10);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
-    backdrop-filter: blur(12px);
+    width: min(100%, 34rem);
+    margin-inline: auto;
+    padding: clamp(1.05rem, 3.8vw, 1.9rem);
+    border-radius: clamp(22px, 4vw, 30px);
+    background: linear-gradient(180deg, rgba(255,255,255,0.13) 0%, rgba(255,255,255,0.08) 100%);
+    border: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 28px 70px rgba(6, 13, 10, 0.28), inset 0 1px 0 rgba(255,255,255,0.08);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
 }
 
 .home-six .agro-access__card-top{
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
-    gap: 14px;
-    margin-bottom: 18px;
+    gap: 0.85rem;
+    margin-bottom: clamp(1rem, 2.3vw, 1.35rem);
+    flex-wrap: wrap;
 }
 
-.home-six .agro-access__status,
+.home-six .agro-access__card-body{
+    display: grid;
+    gap: clamp(1rem, 2.2vw, 1.35rem);
+}
+
 .home-six .agro-access__link{
     display: inline-flex;
     align-items: center;
-    min-height: 34px;
-    padding: 8px 12px;
+    justify-content: center;
+    min-height: 2.5rem;
+    padding: 0.56rem 0.9rem;
     border-radius: 999px;
-    font-size: 11px;
+    font-size: clamp(0.68rem, 1.5vw, 0.74rem);
     line-height: 1;
     font-weight: 800;
     letter-spacing: 0.12em;
     text-transform: uppercase;
 }
 
-.home-six .agro-access__status{
-    background: rgba(132,230,160,0.12);
-    border: 1px solid rgba(132,230,160,0.18);
-    color: #84e6a0;
-}
-
 .home-six .agro-access__link{
     color: rgba(240,246,242,0.76);
     border: 1px solid rgba(255,255,255,0.10);
+    transition: border-color 220ms ease, color 220ms ease, background-color 220ms ease;
 }
 
 .home-six .agro-access__link:hover{
     color: #ffffff;
+    background: rgba(255,255,255,0.06);
     border-color: rgba(132,230,160,0.22);
+}
+
+.home-six .agro-access__link:focus-visible,
+.home-six .agro-access__tab:focus-visible,
+.home-six .agro-access__meta a:focus-visible,
+.home-six .agro-access__hint-link:focus-visible{
+    outline: 2px solid #84e6a0;
+    outline-offset: 2px;
 }
 
 .home-six .agro-access__card h4{
     color: #ffffff;
-    font-size: 32px;
-    line-height: 1.12em;
+    font-size: clamp(1.65rem, 4.4vw, 2.15rem);
+    line-height: 1.08;
     letter-spacing: -0.03em;
-    margin-bottom: 10px;
+    margin-bottom: 0;
+    text-wrap: balance;
 }
 
 .home-six .agro-access__card-intro{
     color: rgba(228,238,232,0.74);
-    font-size: 15px;
-    line-height: 1.8em;
-    margin-bottom: 24px;
+    font-size: clamp(0.93rem, 1.95vw, 1rem);
+    line-height: 1.72;
+    margin-bottom: 0;
 }
 
 .home-six .agro-access__form .form-group{
-    margin-bottom: 16px;
+    margin-bottom: 0;
 }
 
 .home-six .agro-access__form .field-label{
     color: rgba(238,245,240,0.86);
-    font-size: 13px;
+    display: inline-block;
+    font-size: clamp(0.82rem, 1.7vw, 0.9rem);
     line-height: 1.2em;
     font-weight: 700;
-    margin-bottom: 8px;
+    margin-bottom: 0.55rem;
 }
 
 .home-six .agro-access__form .field-inner{
     display: flex;
     align-items: center;
-    gap: 14px;
-    min-height: 58px;
-    padding: 0 16px;
-    border-radius: 16px;
-    background: rgba(20,31,26,0.42);
-    border: 1px solid rgba(255,255,255,0.10);
+    gap: 0.9rem;
+    min-height: 3.5rem;
+    padding: 0.72rem 1rem;
+    border-radius: 1.05rem;
+    background: rgba(20,31,26,0.58);
+    border: 1px solid rgba(255,255,255,0.09);
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
     transition: border-color 220ms ease, box-shadow 220ms ease, background-color 220ms ease;
 }
 
 .home-six .agro-access__form .field-inner:focus-within{
-    border-color: rgba(132,230,160,0.34);
-    box-shadow: 0 0 0 4px rgba(132,230,160,0.08);
-    background: rgba(20,31,26,0.56);
+    border-color: rgba(132,230,160,0.38);
+    box-shadow: 0 0 0 4px rgba(132,230,160,0.12);
+    background: rgba(20,31,26,0.68);
 }
 
 .home-six .agro-access__form .field-inner .alt-icon{
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 26px;
-    height: 26px;
-    flex: 0 0 26px;
+    width: 1.35rem;
+    height: 1.35rem;
+    flex: 0 0 1.35rem;
     color: #84e6a0;
-    font-size: 14px;
+    font-size: 0.9rem;
 }
 
 .home-six .agro-access__form .field-inner .alt-icon:after{
     content: "";
     display: block;
     width: 1px;
-    height: 18px;
-    margin-left: 14px;
+    height: 1.1rem;
+    margin-left: 0.9rem;
     background: rgba(255,255,255,0.10);
 }
 
 .home-six .agro-access__form input,
 .home-six .agro-access__form select{
     width: 100%;
-    height: auto;
     min-height: 24px;
     padding: 0 !important;
     margin: 0;
@@ -1866,9 +1974,19 @@ body.home-six .page-wrapper{
     box-shadow: none !important;
     outline: none;
     color: #ffffff;
-    font-size: 15px;
+    -webkit-text-fill-color: #ffffff;
+    caret-color: #ffffff;
+    font-size: clamp(1rem, 2vw, 1.02rem);
     font-weight: 500;
     line-height: 1.4;
+}
+
+.home-six form.agro-access__form .form-group input[type="email"],
+.home-six form.agro-access__form .form-group input[type="text"],
+.home-six form.agro-access__form .form-group input[type="password"]{
+    color: #ffffff;
+    -webkit-text-fill-color: #ffffff;
+    caret-color: #ffffff;
 }
 
 .home-six .agro-access__form input:focus,
@@ -1887,7 +2005,7 @@ body.home-six .page-wrapper{
 }
 
 .home-six .agro-access__form input::placeholder{
-    color: rgba(228,238,232,0.42);
+    color: rgba(228,238,232,0.50);
 }
 
 .home-six .agro-access__form select{
@@ -1915,45 +2033,50 @@ body.home-six .page-wrapper{
 }
 
 .home-six .agro-access__meta{
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-    margin: 6px 0 18px;
+    display: grid;
+    gap: 0.85rem;
+    margin: 0.15rem 0 0;
 }
 
 .home-six .agro-access__check{
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 0.65rem;
     color: rgba(228,238,232,0.72);
-    font-size: 13px;
-    line-height: 1.4em;
+    font-size: clamp(0.82rem, 1.7vw, 0.88rem);
+    line-height: 1.45;
 }
 
 .home-six .agro-access__check input{
-    width: 15px;
-    height: 15px;
+    width: 1rem;
+    height: 1rem;
     accent-color: #2f8f4e;
+    flex: 0 0 auto;
 }
 
 .home-six .agro-access__meta a{
     color: #84e6a0;
-    font-size: 13px;
-    line-height: 1.4em;
+    font-size: clamp(0.84rem, 1.7vw, 0.9rem);
+    line-height: 1.45;
     font-weight: 600;
 }
 
 .home-six .agro-access__actions{
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
+    gap: 0.8rem;
+    margin-top: 0.25rem;
 }
 
 .home-six .agro-access__actions .theme-btn{
     width: 100%;
     justify-content: center;
     text-align: center;
+    min-height: 3.5rem;
+    padding: 0.95rem 1.15rem;
+    border-radius: 1.15rem;
+    font-size: 1rem;
+    font-weight: 800;
 }
 
 .home-six .agro-access__actions .btn-style-eight{
@@ -1967,10 +2090,32 @@ body.home-six .page-wrapper{
 }
 
 .home-six .agro-access__note{
-    margin-top: 16px;
-    color: rgba(226,235,229,0.60);
-    font-size: 12px;
-    line-height: 1.7em;
+    margin-top: 0.15rem;
+    color: rgba(226,235,229,0.68);
+    font-size: clamp(0.8rem, 1.6vw, 0.86rem);
+    line-height: 1.65;
+}
+
+.home-six .agro-access__assist{
+    display: grid;
+    gap: 0.55rem;
+    padding: 0.1rem 0 0;
+}
+
+.home-six .agro-access__assist-copy{
+    margin: 0;
+    color: rgba(226,235,229,0.68);
+    font-size: clamp(0.84rem, 1.75vw, 0.92rem);
+    line-height: 1.6;
+}
+
+.home-six .agro-access__form{
+    display: grid;
+    gap: 1rem;
+}
+
+.home-six .agro-access__form .row{
+    row-gap: 1rem;
 }
 
 .home-six .banner-six .progress-box .bar-inner .bar,
@@ -3049,6 +3194,36 @@ body.home-six .scroll-to-top:hover{
         padding: 95px 0 85px;
     }
 
+    .home-six .mobile-app-two .parent-row{
+        display: flex;
+        flex-direction: column;
+    }
+
+    .home-six .mobile-app-two .text-col{
+        display: contents;
+    }
+
+    .home-six .mobile-app-two .text-col .inner{
+        order: 1;
+    }
+
+    .home-six .mobile-app-two .image-col{
+        order: 2;
+        margin-top: 8px;
+    }
+
+    .home-six .mobile-app-two .lower-links{
+        order: 3;
+        padding-top: 24px;
+        text-align: center;
+    }
+
+    .home-six .mobile-app-two .lower-links .link{
+        display: inline-block;
+        float: none;
+        margin: 0 0 14px;
+    }
+
     .home-six .mobile-app-two .platform-preview{
         padding: 18px;
         border-radius: 24px;
@@ -3107,31 +3282,77 @@ body.home-six .scroll-to-top:hover{
     }
 }
 
-.home-six .agro-access__tabs{
-    display: flex;
-    gap: 10px;
-    margin: 18px 0 22px;
+@media only screen and (max-width: 767px){
+    .home-six .allocation-five .indicator-grid{
+        gap: 24px;
+    }
+
+    .home-six .allocation-five .graph-col{
+        text-align: left;
+    }
+
+    .home-six .allocation-five .graph-col .f-list{
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .home-six .allocation-five .graph-col .f-block{
+        margin-bottom: 0;
+    }
+
+    .home-six .allocation-five .graph-col .f-block:first-child{
+        grid-column: 1 / -1;
+    }
+
+    .home-six .allocation-five .f-block .f-inner{
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: flex-start;
+        min-height: 100%;
+        padding: 18px 16px 16px 48px;
+        border-radius: 20px;
+        background: #f6faf6;
+        border: 1px solid #dce8dc;
+        box-shadow: 0 12px 28px rgba(42, 74, 53, 0.08);
+    }
+
+    .home-six .allocation-five .f-block .f-inner:before{
+        left: 18px;
+        top: 20px;
+        margin-top: 0;
+        width: 16px;
+        height: 16px;
+    }
+
+    .home-six .allocation-five .f-block .percent{
+        display: block;
+        margin-bottom: 6px;
+        font-size: 24px;
+        line-height: 1;
+        font-weight: 800;
+    }
+
+    .home-six .allocation-five .f-block .f-text{
+        font-size: 15px;
+        line-height: 1.4;
+    }
+
+    .home-six .allocation-five .graph-col .f-block:first-child .f-inner{
+        padding-left: 18px;
+        background: #edf6ee;
+    }
+
+    .home-six .allocation-five .graph-col .f-block:first-child .f-inner:before{
+        display: none;
+    }
 }
 
-.home-six .agro-access__tab{
-    appearance: none;
-    -webkit-appearance: none;
-    flex: 1 1 0;
-    border: 1px solid rgba(255,255,255,.16);
-    background: rgba(255,255,255,.06);
-    color: #dce5df;
-    border-radius: 999px;
-    padding: 12px 14px;
-    font-weight: 700;
-    text-align: center;
-    cursor: pointer;
-    transition: .2s ease;
-}
-
-.home-six .agro-access__tab.is-active{
-    background: #46b267;
-    border-color: #46b267;
-    color: #fff;
+@media only screen and (max-width: 479px){
+    .home-six .allocation-five .graph-col .f-list{
+        grid-template-columns: 1fr;
+    }
 }
 
 .home-six .agro-access__panel{
@@ -3143,10 +3364,10 @@ body.home-six .scroll-to-top:hover{
 }
 
 .home-six .agro-access__feedback{
-    margin-bottom: 16px;
-    padding: 12px 14px;
-    border-radius: 14px;
-    font-size: 14px;
+    margin-bottom: 0;
+    padding: 0.85rem 0.95rem;
+    border-radius: 1rem;
+    font-size: clamp(0.86rem, 1.7vw, 0.92rem);
     line-height: 1.6;
 }
 
@@ -3165,4 +3386,46 @@ body.home-six .scroll-to-top:hover{
 .home-six .agro-access__hint-link{
     color: #88f0a8;
     font-weight: 700;
+    font-size: clamp(0.84rem, 1.7vw, 0.9rem);
+    line-height: 1.45;
+    width: fit-content;
+}
+
+@media only screen and (min-width: 480px){
+    .home-six .agro-access__actions{
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media only screen and (min-width: 992px){
+    .home-six .agro-access__intro{
+        padding-right: clamp(24px, 3vw, 42px);
+    }
+
+    .home-six .agro-access__card{
+        margin-left: auto;
+    }
+}
+
+@media only screen and (max-width: 767px){
+    .home-six .agro-access .outer-container{
+        padding-inline: clamp(16px, 5vw, 24px);
+    }
+
+    .home-six .agro-access__card{
+        width: 100%;
+    }
+
+    .home-six .agro-access__card-top{
+        align-items: stretch;
+    }
+
+    .home-six .agro-access__link{
+        width: 100%;
+    }
+
+    body.home-six .scroll-to-top{
+        right: 14px;
+        bottom: 14px;
+    }
 }

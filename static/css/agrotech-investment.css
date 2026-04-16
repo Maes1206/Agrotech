@@ -1,28 +1,46 @@
 .agt-wallet-summary {
-    margin: 0 0 28px;
-    padding: 28px;
+    width: min(100%, 1320px);
+    margin: 0 auto 32px;
+    padding: clamp(24px, 3vw, 36px);
     border-radius: 28px;
     background:
-        linear-gradient(135deg, rgba(14, 48, 30, .98), rgba(29, 107, 56, .94)),
-        radial-gradient(circle at top right, rgba(123, 226, 154, .18), transparent 34%);
+        radial-gradient(circle at top right, rgba(123, 226, 154, .14), transparent 30%),
+        linear-gradient(135deg, rgba(16, 57, 33, .98), rgba(34, 118, 62, .94));
     color: #fff;
     box-shadow: 0 24px 60px rgba(18, 36, 24, .16);
+}
+
+.agt-wallet-summary__inner {
+    width: min(100%, 1180px);
+    margin-inline: auto;
+    display: grid;
+    gap: clamp(22px, 2.8vw, 30px);
 }
 
 .agt-wallet-summary--detail {
     margin-bottom: 32px;
 }
 
+.agt-wallet-summary__hero {
+    max-width: 880px;
+    display: grid;
+    gap: 10px;
+}
+
 .agt-wallet-summary__hero h3 {
-    margin: 6px 0 10px;
+    margin: 0;
     color: #fff;
-    font-size: 30px;
+    font-size: clamp(30px, 4vw, 46px);
+    line-height: 1.04;
+    letter-spacing: -.03em;
 }
 
 .agt-wallet-summary__hero p {
     margin: 0;
     color: rgba(255, 255, 255, .82);
-    line-height: 1.7;
+    max-width: 74ch;
+    font-size: 16px;
+    line-height: 1.65;
 }
 
 .agt-wallet-summary__eyebrow,
@@ -41,9 +59,9 @@
 
 .agt-wallet-summary__stats {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 14px;
-    margin-top: 22px;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    gap: 18px;
+    align-items: stretch;
 }
 
 .agt-stat-card,
@@ -54,10 +72,16 @@
 }
 
 .agt-stat-card {
-    padding: 18px;
-    border-radius: 20px;
-    background: rgba(255,255,255,.1);
-    backdrop-filter: blur(10px);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 22px;
+    min-height: 196px;
+    border-radius: 22px;
+    background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.08));
+    backdrop-filter: blur(14px);
+    overflow: hidden;
 }
 
 .agt-stat-card span,
@@ -80,17 +104,63 @@
 
 .agt-stat-card strong {
     display: block;
-    margin: 8px 0 6px;
+    margin: 0;
     color: #fff;
-    font-size: 28px;
-    line-height: 1.05;
+    font-size: clamp(34px, 2.6vw, 46px);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.035em;
+}
+
+.agt-stat-card__metric {
+    display: inline-grid !important;
+    grid-template-columns: auto auto auto;
+    align-items: end;
+    justify-content: start;
+    column-gap: 6px;
+    row-gap: 0;
+    white-space: nowrap;
+}
+
+.agt-stat-card__metric--compact {
+    display: inline-grid !important;
+    grid-template-columns: minmax(0, auto) auto;
+    justify-content: start;
+    column-gap: 4px;
+}
+
+.agt-stat-card__prefix,
+.agt-stat-card__suffix {
+    color: rgba(255,255,255,.82);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: .06em;
+}
+
+.agt-stat-card .agt-stat-card__prefix,
+.agt-stat-card .agt-stat-card__suffix,
+.agt-stat-card .agt-stat-card__value {
+    display: inline-block;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.agt-stat-card .agt-stat-card__value {
+    color: #ffffff;
+    min-width: 0;
+    font-size: clamp(24px, 1.9vw, 34px);
+    line-height: .96;
+    font-weight: 800;
+    white-space: nowrap;
 }
 
 .agt-stat-card small {
     display: block;
+    margin-top: auto;
     color: rgba(255,255,255,.78);
-    font-size: 12px;
-    line-height: 1.5;
+    font-size: 13px;
+    line-height: 1.55;
 }
 
 .agt-card-stats {
@@ -560,8 +630,12 @@
 }
 
 @media (max-width: 1199px) {
-    .agt-wallet-summary__stats {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+    .agt-wallet-summary {
+        width: 100%;
+    }
+
+    .agt-wallet-summary__inner {
+        width: 100%;
     }
 
     .agt-investment-layout {
@@ -588,6 +662,28 @@
     .agt-investment-aside h4,
     .agt-investment-main__head h5 {
         font-size: 24px;
+    }
+
+    .agt-stat-card {
+        min-height: 0;
+        padding: 20px;
+    }
+
+    .agt-wallet-summary__hero {
+        gap: 8px;
+    }
+
+    .agt-wallet-summary__stats {
+        gap: 14px;
+    }
+
+    .agt-stat-card .agt-stat-card__value {
+        font-size: 34px;
+    }
+
+    .agt-stat-card .agt-stat-card__prefix,
+    .agt-stat-card .agt-stat-card__suffix {
+        font-size: 16px;
     }
 
     .agt-wallet-summary__stats,

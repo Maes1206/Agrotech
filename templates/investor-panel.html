@@ -33,6 +33,7 @@
 
       {% if wallet_snapshot %}
       <section class="agt-wallet-summary" data-wallet-summary>
+        <div class="agt-wallet-summary__inner">
         <div class="agt-wallet-summary__hero">
           <span class="agt-wallet-summary__eyebrow">Wallet AGT</span>
           <h3>Capital listo para asignar a oportunidades activas</h3>
@@ -46,7 +47,11 @@
           </article>
           <article class="agt-stat-card">
             <span>Disponible para invertir</span>
-            <strong>$<span data-wallet-equivalent>{{ wallet_snapshot.equivalent_cop|floatformat:0|intcomma }}</span> COP</strong>
+            <strong class="agt-stat-card__metric">
+              <span class="agt-stat-card__prefix">$</span>
+                <span class="agt-stat-card__value" data-wallet-equivalent>{{ wallet_snapshot.equivalent_cop_compact }}</span>
+              <span class="agt-stat-card__suffix">COP</span>
+            </strong>
             <small>Equivalente estimado del saldo AGT</small>
           </article>
           <article class="agt-stat-card">
@@ -56,14 +61,22 @@
           </article>
           <article class="agt-stat-card">
             <span>Inversión total acumulada</span>
-            <strong>$<span data-wallet-total-invested>{{ wallet_snapshot.total_invested|floatformat:0|intcomma }}</span> COP</strong>
+            <strong class="agt-stat-card__metric">
+              <span class="agt-stat-card__prefix">$</span>
+                <span class="agt-stat-card__value" data-wallet-total-invested>{{ wallet_snapshot.total_invested_compact }}</span>
+              <span class="agt-stat-card__suffix">COP</span>
+            </strong>
             <small>Portafolio AgroTech consolidado</small>
           </article>
           <article class="agt-stat-card">
             <span>Rendimiento estimado</span>
-            <strong><span data-wallet-yield>{{ wallet_snapshot.estimated_return_pct|floatformat:2 }}</span>%</strong>
+            <strong class="agt-stat-card__metric agt-stat-card__metric--compact">
+              <span class="agt-stat-card__value" data-wallet-yield>{{ wallet_snapshot.estimated_return_pct|floatformat:2 }}</span>
+              <span class="agt-stat-card__suffix">%</span>
+            </strong>
             <small>Promedio ponderado del portafolio</small>
           </article>
+        </div>
         </div>
       </section>
       {% endif %}
@@ -86,6 +99,8 @@
               {% csrf_token %}
               <input type="hidden" name="panel_action" id="investor-panel-action" value="">
               <input type="hidden" name="selected_asset_code" id="selected-asset-code-input" value="{{ selected_asset_code }}">
+              <input type="hidden" name="linked_card_holder" id="linked-card-holder-input" value="{{ linked_card.holder|default:'' }}">
+              <input type="hidden" name="linked_card_last4" id="linked-card-last4-input" value="{{ linked_card.last4|default:'' }}">
               <div class="investor-token-title">
                 <h3>Token AgroTech</h3>
               </div>
@@ -102,7 +117,7 @@
                       min="0"
                       max="1"
                       step="0.000001"
-                      value="{{ panel_form.btc_amount.value|default:'0.050000' }}"
+                      value="0.000000"
                     >
                   </div>
                   <p class="investor-field__message" id="btc-live-message">Estas comprando aproximadamente {% if calculation %}{{ calculation.estimated_tokens }}{% else %}0{% endif %} tokens AGT.</p>
@@ -164,9 +179,9 @@
             </div>
 
             <div class="app-container">
-              <div class="wallet wallet--empty" id="linked-wallet" data-storage-key="agrotechLinkedCard:{{ request.user.id }}">
+              <div class="wallet{% if not linked_card %} wallet--empty{% endif %}" id="linked-wallet" data-storage-key="agrotechLinkedCard:{{ request.user.id }}" data-linked-holder="{{ linked_card.holder|default:'' }}" data-linked-last4="{{ linked_card.last4|default:'' }}">
                 <div class="wallet-back"></div>
-                <div class="wallet-empty-state" id="wallet-empty-state">
+                <div class="wallet-empty-state" id="wallet-empty-state"{% if linked_card %} style="display:none;"{% endif %}>
                   <strong>Sin tarjeta vinculada</strong>
                   <span>Agrega una tarjeta en el checkout para verla aqu&iacute; dentro de tu wallet.</span>
                 </div>
@@ -182,11 +197,11 @@
                     </div>
                     <div class="wallet-card-bottom">
                       <div class="card-info">
-                        <span class="label">Titular</span><span class="value" id="wallet-card-holder">{{ holder_name|upper|truncatechars:18 }}</span>
+                        <span class="label">Titular</span><span class="value" id="wallet-card-holder">{% if linked_card and linked_card.holder %}{{ linked_card.holder|upper|truncatechars:18 }}{% else %}{{ holder_name|upper|truncatechars:18 }}{% endif %}</span>
                       </div>
                       <div class="card-number-wrapper">
-                        <span class="hidden-stars" id="wallet-card-hidden">**** 4242</span>
-                        <span class="card-number" id="wallet-card-number">**** **** **** 4242</span>
+                        <span class="hidden-stars" id="wallet-card-hidden">**** {% if linked_card and linked_card.last4 %}{{ linked_card.last4 }}{% else %}4242{% endif %}</span>
+                        <span class="card-number" id="wallet-card-number">**** **** **** {% if linked_card and linked_card.last4 %}{{ linked_card.last4 }}{% else %}4242{% endif %}</span>
                       </div>
                     </div>
                   </div>
@@ -248,7 +263,7 @@
             <ul class="investor-summary-list">
               <li><span>Tokens AGT acumulados</span><strong>{{ portfolio_tokens }}</strong></li>
               <li><span>Valor total del balance</span><strong>${{ portfolio_balance_cop|floatformat:0|intcomma }} COP</strong></li>
-              <li><span>Participaci&oacute;n actual</span><strong>{% if summary_holding %}{{ summary_holding.participation|floatformat:4 }}{% else %}0.0000{% endif %}</strong></li>
+              <li><span>Participaci&oacute;n actual</span><strong>{{ summary_participation_pct|floatformat:2 }}%</strong></li>
               <li><span>Ultima actualizaci&oacute;n</span><strong>{% if latest_transaction %}{{ latest_transaction.created_at|date:"Y-m-d H:i" }}{% else %}-{% endif %}</strong></li>
             </ul>
             {% else %}
@@ -437,7 +452,7 @@
             data-asset-weight="{{ item.asset.current_weight }} kg"
             data-asset-projected-value="${{ item.asset.projected_value|floatformat:0|intcomma }} COP"
             data-asset-return="{{ item.asset.estimated_return_pct|floatformat:1 }}%"
-            data-asset-tokens-available="{{ item.asset.available_units }}"
+            data-asset-tokens-available="{{ item.tokens_available }}"
             data-asset-token-price="{{ item.asset.token_price|floatformat:0 }}"
             data-asset-holding="{{ item.holding_quantity }}"
             data-asset-total-invested="${{ item.total_invested|floatformat:0|intcomma }} COP"
@@ -1018,6 +1033,12 @@
       const walletCardNumber = document.getElementById("wallet-card-number");
       const walletBankCard = document.getElementById("wallet-bank-card");
       const walletStorageKey = (wallet && wallet.dataset.storageKey) || "agrotechLinkedCard";
+      const linkedCardHolderInput = document.getElementById("linked-card-holder-input");
+      const linkedCardLast4Input = document.getElementById("linked-card-last4-input");
+      const serverLinkedCard = wallet ? {
+        holder: wallet.dataset.linkedHolder || "",
+        last4: wallet.dataset.linkedLast4 || ""
+      } : null;
 
       if (!form || !openBtn || !modal || !confirmBtn || !actionInput || !btcInput || !calcTokensValue || !calcUsdValue || !calcCopValue) {
         return;
@@ -1054,6 +1075,14 @@
       const getAvailableTokens = function () {
         return Math.max(parseInt(form.dataset.availableTokens || "0", 10) || 0, 0);
       };
+
+      if (btcInput) {
+        btcInput.value = "0.000000";
+      }
+
+      if (btcSlider) {
+        btcSlider.value = "0.000000";
+      }
 
       const sanitizeBtcInput = function (rawValue) {
         const value = String(rawValue || "").replace(/,/g, ".").replace(/[^\d.]/g, "");
@@ -1278,6 +1307,15 @@
         walletBankCard.classList.add("is-linking");
       };
 
+      const syncLinkedCardInputs = function (payload) {
+        if (linkedCardHolderInput) {
+          linkedCardHolderInput.value = payload && payload.holder ? String(payload.holder) : "";
+        }
+        if (linkedCardLast4Input) {
+          linkedCardLast4Input.value = payload && /^\d{4}$/.test(String(payload.last4 || "")) ? String(payload.last4) : "";
+        }
+      };
+
       const applyLinkedCard = function (payload, options) {
         const shouldAnimate = Boolean(options && options.animate);
         if (!wallet || !walletEmptyState || !walletCardHolder || !walletCardHidden || !walletCardNumber) {
@@ -1290,6 +1328,7 @@
           if (walletBankCard) {
             walletBankCard.classList.remove("is-linking");
           }
+          syncLinkedCardInputs(null);
           walletCardHolder.textContent = "{{ holder_name|upper|truncatechars:18 }}";
           walletCardHidden.textContent = "**** 4242";
           walletCardNumber.textContent = "**** **** **** 4242";
@@ -1298,6 +1337,7 @@
 
         wallet.classList.remove("wallet--empty");
         walletEmptyState.style.display = "none";
+        syncLinkedCardInputs(payload);
         walletCardHolder.textContent = (payload.holder || "{{ holder_name|upper|truncatechars:18 }}").toUpperCase().slice(0, 18);
         walletCardHidden.textContent = "**** " + payload.last4;
         walletCardNumber.textContent = "**** **** **** " + payload.last4;
@@ -1307,11 +1347,17 @@
       };
 
       const loadLinkedCard = function () {
+        const hasServerCard = serverLinkedCard && /^\d{4}$/.test(String(serverLinkedCard.last4 || ""));
         try {
-          const raw = window.localStorage.getItem(walletStorageKey);
-          applyLinkedCard(raw ? JSON.parse(raw) : null, { animate: false });
-        } catch (error) {
+          if (hasServerCard) {
+            window.localStorage.setItem(walletStorageKey, JSON.stringify(serverLinkedCard));
+            applyLinkedCard(serverLinkedCard, { animate: false });
+            return;
+          }
+          window.localStorage.removeItem(walletStorageKey);
           applyLinkedCard(null, { animate: false });
+        } catch (error) {
+          applyLinkedCard(hasServerCard ? serverLinkedCard : null, { animate: false });
         }
       };
 
