@@ -6,6 +6,7 @@ from django.urls import reverse
 from .models import (
     AssetCategory,
     BiologicalAsset,
+    DigitalContract,
     Farm,
     Producer,
     TokenHolding,
@@ -308,3 +309,42 @@ class InvestorPanelTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["summary_participation_pct"], Decimal("26.00"))
+
+    def test_investor_panel_purchase_exposes_certificate_pdf_url(self):
+        self.client.login(username="paneluser", password="ClaveSegura123*")
+
+        response = self.client.post(
+            reverse("investor_panel"),
+            data={"btc_amount": "0.05000", "panel_action": "buy"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        contract = DigitalContract.objects.get(user=self.user, tokenized_asset=self.tokenized_asset)
+        self.assertContains(response, reverse("download_digital_certificate", args=[contract.certificate_id]))
+
+    def test_download_digital_certificate_returns_pdf_for_owner(self):
+        contract_result = buy_tokens(self.user, self.tokenized_asset, 5)
+        self.client.login(username="paneluser", password="ClaveSegura123*")
+
+        response = self.client.get(
+            reverse("download_digital_certificate", args=[contract_result.digital_contract.certificate_id])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertTrue(response.content.startswith(b"%PDF"))
+
+    def test_download_digital_certificate_is_not_available_to_other_users(self):
+        contract_result = buy_tokens(self.user, self.tokenized_asset, 5)
+        outsider = User.objects.create_user(
+            username="outsider",
+            email="outsider@agrotech.demo",
+            password="ClaveSegura123*",
+        )
+        self.client.login(username=outsider.username, password="ClaveSegura123*")
+
+        response = self.client.get(
+            reverse("download_digital_certificate", args=[contract_result.digital_contract.certificate_id])
+        )
+
+        self.assertEqual(response.status_code, 404)

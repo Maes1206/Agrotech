@@ -7,6 +7,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
 <link href="{% static 'css/bootstrap.css' %}" rel="stylesheet">
+<link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
 <link href="{% static 'css/style.css' %}" rel="stylesheet">
 <link href="{% static 'css/responsive.css' %}" rel="stylesheet">
 <link href="{% static 'css/asset-detail.css' %}" rel="stylesheet">
@@ -27,6 +28,14 @@
           <h3>Tu capacidad de inversión está lista para este activo</h3>
           <p>Recibirás un certificado digital de participación, trazabilidad actualizada del activo y confirmación en blockchain al cerrar la operación.</p>
         </div>
+        <button type="button" class="agt-wallet-summary__toggle" data-wallet-summary-toggle aria-expanded="false">
+          <span class="agt-wallet-summary__toggle-copy">
+            <strong>Ver wallet AGT</strong>
+            <small>Despliega saldo, rendimiento y capital disponible</small>
+          </span>
+          <span class="agt-wallet-summary__toggle-icon" aria-hidden="true"></span>
+        </button>
+        <div class="agt-wallet-summary__body" data-wallet-summary-body>
         <div class="agt-wallet-summary__stats">
           <article class="agt-stat-card">
             <span>Tokens AGT disponibles</span>
@@ -64,6 +73,7 @@
             </strong>
             <small>Promedio del portafolio</small>
           </article>
+        </div>
         </div>
         </div>
       </section>
@@ -212,6 +222,56 @@
               <li><span>Categoría</span><strong>{{ asset.category.name }}</strong></li>
             </ul>
           </div>
+        </div>
+      </div>
+
+      <div class="row clearfix mt-4">
+        <div class="col-12">
+          <section class="asset-location-card" data-asset-map>
+            <div class="asset-location-card__content">
+              <span class="asset-location-card__eyebrow">Ubicacion del activo</span>
+              <h4>Mapa operativo de la finca</h4>
+              <p>{{ asset.name }} esta ubicado en {{ asset_map.farm_name }}, zona {{ asset_map.zone }}, cerca de {{ asset_map.municipality }}, {{ asset_map.department }}.</p>
+              <div class="asset-location-card__stats">
+                <div><span>Activo</span><strong>{{ asset.code }}</strong></div>
+                <div><span>Finca</span><strong>{{ asset_map.farm_name }}</strong></div>
+                <div><span>Municipio</span><strong>{{ asset_map.municipality }}</strong></div>
+                <div><span>Coordenadas</span><strong>{{ asset_map.latitude }}, {{ asset_map.longitude }}</strong></div>
+              </div>
+              <div class="asset-location-card__controls" role="group" aria-label="Controles del mapa">
+                <button type="button" class="is-active" data-map-mode="farm">Finca</button>
+                <button type="button" data-map-mode="region">Huila</button>
+              </div>
+            </div>
+            <div
+              class="asset-location-map"
+              data-map-lat="{{ asset_map.latitude }}"
+              data-map-lng="{{ asset_map.longitude }}"
+              data-map-code="{{ asset.farm.code }}"
+              data-map-farm="{{ asset_map.farm_name }}"
+              data-map-place="{{ asset_map.municipality }}, {{ asset_map.department }}"
+              style="--marker-x: {{ asset_map.map_x }}%; --marker-y: {{ asset_map.map_y }}%;"
+              aria-label="Mapa del activo en {{ asset_map.municipality }}, {{ asset_map.department }}"
+            >
+              <div class="asset-location-map__leaflet" data-leaflet-map></div>
+              <div class="asset-location-map__grid"></div>
+              <svg class="asset-location-map__shape" viewBox="0 0 420 320" role="img" aria-hidden="true">
+                <path class="asset-location-map__region" d="M194 21 C239 31 271 55 294 91 C322 134 354 157 352 200 C350 252 303 288 246 301 C190 314 134 296 99 258 C65 221 61 171 85 129 C109 86 135 40 194 21 Z"></path>
+                <path class="asset-location-map__river" d="M206 35 C188 76 211 101 196 137 C178 179 204 210 186 257 C179 276 169 290 157 305"></path>
+                <circle class="asset-location-map__city asset-location-map__city--neiva" cx="276" cy="73" r="5"></circle>
+                <circle class="asset-location-map__city asset-location-map__city--garzon" cx="188" cy="231" r="5"></circle>
+              </svg>
+              <button class="asset-location-map__marker" type="button" data-map-marker aria-label="{{ asset_map.farm_name }}">
+                <span class="asset-location-map__pulse"></span>
+                <span class="asset-location-map__pin"></span>
+              </button>
+              <div class="asset-location-map__label">
+                <span>{{ asset_map.zone }}</span>
+                <strong>{{ asset_map.farm_name }}</strong>
+                <small>{{ asset_map.municipality }}, {{ asset_map.department }}</small>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
 
@@ -442,6 +502,7 @@
           </div>
           <div class="agt-certificate__actions">
             <button type="button" class="theme-btn btn-style-eight" data-view-contract><span class="txt">Ver contrato digital</span></button>
+            <a href="{% if latest_contract %}{% url 'download_digital_certificate' latest_contract.certificate_id %}{% else %}#{% endif %}" class="theme-btn btn-style-twelve{% if not latest_contract %} is-disabled{% endif %}" data-download-certificate{% if not latest_contract %} aria-disabled="true"{% endif %}><span class="txt">Descargar PDF</span></a>
             <a href="{% url 'investor_panel' %}?asset={{ asset.code }}" class="theme-btn btn-style-twelve"><span class="txt">Ver en portafolio</span></a>
             <button type="button" class="agt-inline-link" data-close-investment-modal>Cerrar</button>
           </div>
@@ -451,6 +512,8 @@
   </div>
   {% endif %}
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="{% static 'js/agrotech-investment.js' %}"></script>
+  <script src="{% static 'js/agrotech-asset-map.js' %}"></script>
 </body>
 </html>

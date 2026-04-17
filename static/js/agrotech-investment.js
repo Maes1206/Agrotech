@@ -1,4 +1,57 @@
 (function () {
+  function initWalletSummaryAccordion() {
+    document.querySelectorAll("[data-wallet-summary]").forEach(function (summary) {
+      var toggle = summary.querySelector("[data-wallet-summary-toggle]");
+      var body = summary.querySelector("[data-wallet-summary-body]");
+
+      if (!toggle || !body) {
+        return;
+      }
+
+      function setExpanded(expanded) {
+        summary.classList.toggle("is-expanded", expanded);
+        summary.classList.toggle("is-collapsed", !expanded);
+        toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+
+        if (expanded) {
+          body.style.maxHeight = body.scrollHeight + "px";
+        } else {
+          body.style.maxHeight = body.scrollHeight + "px";
+          window.requestAnimationFrame(function () {
+            body.style.maxHeight = "0px";
+          });
+        }
+      }
+
+      function syncLayout() {
+        if (!summary.classList.contains("is-expanded")) {
+          summary.classList.add("is-collapsed");
+          body.style.maxHeight = "0px";
+          toggle.setAttribute("aria-expanded", "false");
+          return;
+        }
+
+        body.style.maxHeight = body.scrollHeight + "px";
+      }
+
+      summary.classList.add("is-collapsed");
+      body.style.maxHeight = "0px";
+      toggle.setAttribute("aria-expanded", "false");
+
+      toggle.addEventListener("click", function () {
+        setExpanded(!summary.classList.contains("is-expanded"));
+      });
+
+      window.addEventListener("resize", function () {
+        if (summary.classList.contains("is-expanded")) {
+          body.style.maxHeight = body.scrollHeight + "px";
+        }
+      });
+
+      syncLayout();
+    });
+  }
+
   function formatNumber(value) {
     const numeric = Number(value || 0);
     return new Intl.NumberFormat("es-CO").format(numeric);
@@ -6,6 +59,15 @@
 
   function formatCurrency(value) {
     return "$" + formatNumber(value) + " COP";
+  }
+
+  function escapeHtml(value) {
+    return String(value == null ? "" : value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   }
 
   function getCookie(name) {
@@ -19,6 +81,266 @@
   function toInteger(value) {
     const parsed = parseInt(value, 10);
     return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  function updateRecentCertificates(contract, assetName) {
+    document.querySelectorAll("[data-recent-certificates-list]").forEach(function (list) {
+      const empty = list.querySelector("[data-certificates-empty]");
+      if (empty) {
+        empty.remove();
+      }
+
+      const existing = list.querySelector('[data-certificate-id="' + contract.certificate_id + '"]');
+      if (existing) {
+        const download = existing.querySelector(".agt-contract-list__download");
+        if (download) {
+          download.href = contract.download_pdf_url;
+        }
+        return;
+      }
+
+      const item = document.createElement("article");
+      item.className = "agt-contract-list__item agt-contract-list__item--certificate";
+      item.setAttribute("data-certificate-id", contract.certificate_id);
+      item.innerHTML =
+        '<div><strong>' + escapeHtml(assetName) + '</strong><span>' + escapeHtml(contract.certificate_id) + '</span></div>' +
+        '<div><strong>' + escapeHtml(contract.tokens_acquired) + ' AGT</strong><span>' + escapeHtml(contract.issued_at.slice(0, 16)) + '</span></div>' +
+        '<a href="' + escapeHtml(contract.download_pdf_url) + '" class="agt-contract-list__download">Descargar PDF</a>';
+      list.prepend(item);
+    });
+  }
+
+  // Demo layer: extiende la card visualmente sin reemplazar la logica real de compra.
+  const opportunityDemo = {
+    config: {
+      demoMode: true,
+      animatedTokenFlow: true,
+      classificationMode: "smart",
+      minUpdateInterval: 3200,
+      maxUpdateInterval: 7600,
+      activityIntensity: 0.45,
+    },
+    cards: new Map(),
+  };
+
+  function createSeededRandom(seedValue) {
+    let seed = Math.max(1, toInteger(seedValue) || 1);
+    return function () {
+      seed = (seed * 1664525 + 1013904223) % 4294967296;
+      return seed / 4294967296;
+    };
+  }
+
+  function buildCardSeed(code) {
+    return String(code || "").split("").reduce(function (acc, char, index) {
+      return acc + (char.charCodeAt(0) * (index + 1));
+    }, 0);
+  }
+
+  function clampNumber(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+  }
+
+  function readOpportunityDemoConfig(root) {
+    const dataset = (root && root.dataset) || {};
+    const parseBool = function (value, fallback) {
+      if (value === undefined || value === null || value === "") {
+        return fallback;
+      }
+      return String(value).toLowerCase() !== "false";
+    };
+    const parseNumber = function (value, fallback) {
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? numeric : fallback;
+    };
+
+    return {
+      demoMode: parseBool(dataset.demoMode, opportunityDemo.config.demoMode),
+      animatedTokenFlow: parseBool(dataset.animatedTokenFlow, opportunityDemo.config.animatedTokenFlow),
+      classificationMode: dataset.classificationMode || opportunityDemo.config.classificationMode,
+      minUpdateInterval: parseNumber(dataset.demoMinUpdateInterval, opportunityDemo.config.minUpdateInterval),
+      maxUpdateInterval: parseNumber(dataset.demoMaxUpdateInterval, opportunityDemo.config.maxUpdateInterval),
+      activityIntensity: clampNumber(
+        parseNumber(dataset.demoActivityIntensity, opportunityDemo.config.activityIntensity),
+        0.05,
+        1
+      ),
+    };
+  }
+
+  function normalizeOpportunitySnapshot(input) {
+    const totalTokens = Math.max(toInteger(input.total_tokens), 0);
+    const tokensSold = clampNumber(toInteger(input.tokens_sold), 0, totalTokens);
+    const tokensAvailable = clampNumber(
+      input.tokens_available !== undefined ? toInteger(input.tokens_available) : totalTokens - tokensSold,
+      0,
+      totalTokens
+    );
+    const tokenPrice = Number(input.token_price || 0);
+    const estimatedReturn = Number(input.estimated_return || 0);
+    const progressPercent = totalTokens ? Math.round((tokensSold / totalTokens) * 100) : 0;
+    const capitalRemaining = input.capital_remaining !== undefined
+      ? Number(input.capital_remaining)
+      : tokensAvailable * tokenPrice;
+    const capitalRaised = input.capital_raised !== undefined
+      ? Number(input.capital_raised)
+      : tokensSold * tokenPrice;
+
+    return {
+      code: input.code || "",
+      total_tokens: totalTokens,
+      tokens_sold: tokensSold,
+      tokens_available: tokensAvailable,
+      token_price: tokenPrice,
+      estimated_return: estimatedReturn,
+      capital_remaining: capitalRemaining,
+      capital_raised: capitalRaised,
+      participants_estimate: Math.max(toInteger(input.participants_estimate), 0),
+      urgency_label: input.urgency_label || "Disponible",
+      urgency_tone: input.urgency_tone || "available",
+      progress_percent: progressPercent,
+      activity_score: Math.max(Number(input.activity_score || 0), 0),
+      holding_quantity: Math.max(toInteger(input.holding_quantity), 0),
+    };
+  }
+
+  function resolveSmartUrgency(snapshot, cardState) {
+    const soldRatio = snapshot.total_tokens ? snapshot.tokens_sold / snapshot.total_tokens : 0;
+    const availableRatio = snapshot.total_tokens ? snapshot.tokens_available / snapshot.total_tokens : 0;
+    const estimatedReturn = Number(snapshot.estimated_return || 0);
+    const activityScore = Math.max(Number(snapshot.activity_score || 0), 0);
+    const typeKey = String((cardState && cardState.typeKey) || "").toLowerCase();
+
+    if (snapshot.tokens_available <= Math.max(4, Math.ceil(snapshot.total_tokens * 0.07))) {
+      return { label: "Ultimos tokens", tone: "critical" };
+    }
+    if (estimatedReturn >= 17 && soldRatio >= 0.45) {
+      return { label: "Activo premium", tone: "premium" };
+    }
+    if (activityScore >= 3 && soldRatio >= 0.72) {
+      return { label: "Rotacion acelerada", tone: "accelerated" };
+    }
+    if (activityScore >= 2.4 && soldRatio >= 0.58) {
+      return { label: "Alta demanda", tone: "hot" };
+    }
+    if (activityScore >= 1.6 && soldRatio >= 0.4) {
+      return { label: "Demanda creciente", tone: "warm" };
+    }
+    if (soldRatio <= 0.22 || availableRatio >= 0.78) {
+      return { label: "Oportunidad temprana", tone: "early" };
+    }
+    if (activityScore >= 0.85 || typeKey === "individual") {
+      return { label: "Interes moderado", tone: "moderate" };
+    }
+    return { label: "Movimiento estable", tone: "stable" };
+  }
+
+  function computeOpportunityPresentation(snapshot, cardState, config) {
+    const baseTone = cardState && cardState.baseUrgencyTone ? cardState.baseUrgencyTone : snapshot.urgency_tone;
+    const baseLabel = cardState && cardState.baseUrgencyLabel ? cardState.baseUrgencyLabel : snapshot.urgency_label;
+    const smartUrgency = config.classificationMode === "smart"
+      ? resolveSmartUrgency(snapshot, cardState)
+      : { label: baseLabel, tone: baseTone };
+    const flowIntensity = clampNumber(0.35 + (snapshot.progress_percent / 100) * 0.4 + (snapshot.activity_score * 0.08), 0.28, 1);
+    const flowDuration = clampNumber(1.95 - (snapshot.progress_percent / 100) * 0.8 - (snapshot.activity_score * 0.08), 0.9, 2.2);
+
+    return {
+      urgency_label: smartUrgency.label,
+      urgency_tone: smartUrgency.tone,
+      flow_intensity: Number(flowIntensity.toFixed(2)),
+      flow_duration: Number(flowDuration.toFixed(2)),
+    };
+  }
+
+  function applyOpportunityTone(card, tone) {
+    if (!card) {
+      return;
+    }
+    const allTones = ["is-hot", "is-warm", "is-stable", "is-early", "is-moderate", "is-premium", "is-accelerated", "is-critical"];
+    const urgency = card.querySelector(".investor-opportunity-card__urgency");
+    if (!urgency) {
+      return;
+    }
+    urgency.classList.remove.apply(urgency.classList, allTones);
+    const toneClassMap = {
+      hot: "is-hot",
+      warm: "is-warm",
+      stable: "is-stable",
+      early: "is-early",
+      moderate: "is-moderate",
+      premium: "is-premium",
+      accelerated: "is-accelerated",
+      critical: "is-critical",
+      almost: "is-critical",
+    };
+    const toneClass = toneClassMap[tone] || "";
+    if (toneClass) {
+      urgency.classList.add(toneClass);
+    }
+  }
+
+  // Renderiza solo el estado visible de la oportunidad; el checkout sigue usando los datasets reales.
+  function renderOpportunityCard(card, snapshot, options) {
+    const settings = options || {};
+    const progressCopy = card.querySelector("[data-asset-progress-copy]");
+    const progressValue = card.querySelector("[data-asset-progress-value]");
+    const progressBar = card.querySelector("[data-asset-progress-bar]");
+    const availabilityCopy = card.querySelector("[data-asset-availability-copy]");
+    const urgencyLabel = card.querySelector("[data-asset-urgency-label]");
+    const capitalRaised = card.querySelector("[data-asset-capital-raised]");
+    const capitalRemaining = card.querySelector("[data-asset-capital-remaining]");
+    const participants = card.querySelector("[data-asset-participants]");
+    const availableTokens = card.querySelector("[data-asset-tokens-available]");
+    const priceAmount = card.querySelector("[data-asset-price-amount]");
+    const visual = settings.visual || {};
+    const label = visual.urgency_label || snapshot.urgency_label;
+    const tone = visual.urgency_tone || snapshot.urgency_tone;
+
+    if (progressCopy) {
+      progressCopy.textContent = snapshot.tokens_sold + " / " + snapshot.total_tokens + " tokens vendidos";
+    }
+    if (progressValue) {
+      progressValue.textContent = snapshot.progress_percent + "%";
+    }
+    if (progressBar) {
+      progressBar.style.width = snapshot.progress_percent + "%";
+    }
+    if (availabilityCopy) {
+      availabilityCopy.textContent = snapshot.tokens_sold + " vendidos | " + snapshot.tokens_available + " disponibles";
+    }
+    if (urgencyLabel) {
+      urgencyLabel.textContent = label;
+    }
+    if (capitalRaised) {
+      capitalRaised.textContent = formatCurrency(snapshot.capital_raised);
+    }
+    if (capitalRemaining) {
+      capitalRemaining.textContent = formatCurrency(snapshot.capital_remaining);
+    }
+    if (participants) {
+      participants.textContent = snapshot.participants_estimate;
+    }
+    if (availableTokens) {
+      availableTokens.textContent = snapshot.tokens_available + " tokens";
+    }
+    if (priceAmount) {
+      priceAmount.textContent = "$" + formatNumber(snapshot.capital_remaining);
+    }
+
+    card.style.setProperty("--token-flow-duration", (visual.flow_duration || 1.4) + "s");
+    card.style.setProperty("--token-flow-intensity", String(visual.flow_intensity || 0.7));
+    applyOpportunityTone(card, tone);
+    card.dataset.demoUrgencyLabel = label;
+    card.dataset.demoUrgencyTone = tone;
+
+    if (settings.highlight) {
+      card.classList.remove("is-demo-updating");
+      void card.offsetWidth;
+      card.classList.add("is-demo-updating");
+      window.setTimeout(function () {
+        card.classList.remove("is-demo-updating");
+      }, 520);
+    }
   }
 
   function createStepper(stepper) {
@@ -63,60 +385,37 @@
 
   function updateAssetCard(snapshot) {
     document.querySelectorAll('.investor-opportunity-card[data-asset-code="' + snapshot.code + '"]').forEach(function (card) {
-      card.dataset.assetTokensAvailable = String(snapshot.tokens_available);
-      card.dataset.tokensSold = String(snapshot.tokens_sold);
-      card.dataset.totalTokens = String(snapshot.total_tokens);
-      card.dataset.capitalRaised = String(snapshot.capital_raised);
-      card.dataset.capitalRemaining = String(snapshot.capital_remaining);
-      card.dataset.participantsEstimate = String(snapshot.participants_estimate);
-      card.dataset.urgencyLabel = snapshot.urgency_label;
-      card.dataset.urgencyTone = snapshot.urgency_tone;
-      card.dataset.assetHolding = String(snapshot.holding_quantity);
-      const progressCopy = card.querySelector("[data-asset-progress-copy]");
-      const progressValue = card.querySelector("[data-asset-progress-value]");
-      const progressBar = card.querySelector("[data-asset-progress-bar]");
-      const availabilityCopy = card.querySelector("[data-asset-availability-copy]");
-      const urgencyLabel = card.querySelector("[data-asset-urgency-label]");
-      const capitalRaised = card.querySelector("[data-asset-capital-raised]");
-      const capitalRemaining = card.querySelector("[data-asset-capital-remaining]");
-      const participants = card.querySelector("[data-asset-participants]");
-      const availableTokens = card.querySelector("[data-asset-tokens-available]");
-      const priceAmount = card.querySelector("[data-asset-price-amount]");
+      const normalized = normalizeOpportunitySnapshot(snapshot);
+      const cardState = opportunityDemo.cards.get(card.dataset.assetCode) || buildOpportunityCardState(card);
+      const visual = computeOpportunityPresentation(normalized, cardState, opportunityDemo.config);
 
-      if (progressCopy) {
-        progressCopy.textContent = snapshot.tokens_sold + " / " + snapshot.total_tokens + " tokens vendidos";
-      }
-      if (progressValue) {
-        progressValue.textContent = snapshot.progress_percent + "%";
-      }
-      if (progressBar) {
-        progressBar.style.width = snapshot.progress_percent + "%";
-      }
-      if (availabilityCopy) {
-        availabilityCopy.textContent = snapshot.tokens_sold + " vendidos | " + snapshot.tokens_available + " disponibles";
-      }
-      if (urgencyLabel) {
-        urgencyLabel.textContent = snapshot.urgency_label;
-      }
-      if (capitalRaised) {
-        capitalRaised.textContent = formatCurrency(snapshot.capital_raised);
-      }
-      if (capitalRemaining) {
-        capitalRemaining.textContent = formatCurrency(snapshot.capital_remaining);
-      }
-      if (participants) {
-        participants.textContent = snapshot.participants_estimate;
-      }
-      if (availableTokens) {
-        availableTokens.textContent = snapshot.tokens_available + " tokens";
-      }
-      if (priceAmount) {
-        priceAmount.textContent = "$" + formatNumber(snapshot.capital_remaining);
-      }
+      card.dataset.assetTokensAvailable = String(normalized.tokens_available);
+      card.dataset.tokensSold = String(normalized.tokens_sold);
+      card.dataset.totalTokens = String(normalized.total_tokens);
+      card.dataset.capitalRaised = String(normalized.capital_raised);
+      card.dataset.capitalRemaining = String(normalized.capital_remaining);
+      card.dataset.participantsEstimate = String(normalized.participants_estimate);
+      card.dataset.urgencyLabel = normalized.urgency_label;
+      card.dataset.urgencyTone = normalized.urgency_tone;
+      card.dataset.assetHolding = String(normalized.holding_quantity);
+      card.dataset.estimatedReturn = String(normalized.estimated_return);
+      renderOpportunityCard(card, normalized, { visual: visual, highlight: true });
+
       const button = card.querySelector("[data-open-investment-modal]");
       if (button) {
-        button.disabled = snapshot.tokens_available <= 0;
+        button.disabled = normalized.tokens_available <= 0;
       }
+
+      if (cardState.timeoutId) {
+        window.clearTimeout(cardState.timeoutId);
+        cardState.timeoutId = null;
+      }
+      cardState.card = card;
+      cardState.real = Object.assign({}, normalized);
+      cardState.visible = Object.assign({}, normalized);
+      cardState.activityScore = 0;
+      opportunityDemo.cards.set(card.dataset.assetCode, cardState);
+      scheduleOpportunitySimulation(cardState, opportunityDemo.config);
     });
   }
 
@@ -190,10 +489,6 @@
   function updatePortfolioPanel(snapshot, position, transaction) {
     const selectedCodeInput = document.getElementById("selected-asset-code-input");
     if (selectedCodeInput && selectedCodeInput.value === snapshot.code) {
-      const chip = document.getElementById("selected-asset-tokens-chip");
-      if (chip) {
-        chip.textContent = snapshot.tokens_available + " tokens disponibles";
-      }
       const availableEl = document.getElementById("portfolio-asset-tokens-available");
       if (availableEl) {
         availableEl.textContent = snapshot.tokens_available;
@@ -261,12 +556,123 @@
     });
   }
 
+  function collectOpportunityCards(root) {
+    return Array.from((root || document).querySelectorAll(".investor-opportunity-card[data-asset-code]"));
+  }
+
+  function buildOpportunityCardState(card) {
+    const snapshot = normalizeOpportunitySnapshot({
+      code: card.dataset.assetCode,
+      total_tokens: card.dataset.totalTokens,
+      tokens_sold: card.dataset.tokensSold,
+      tokens_available: card.dataset.assetTokensAvailable,
+      capital_raised: card.dataset.capitalRaised,
+      capital_remaining: card.dataset.capitalRemaining,
+      participants_estimate: card.dataset.participantsEstimate,
+      urgency_label: card.dataset.baseUrgencyLabel || card.dataset.urgencyLabel,
+      urgency_tone: card.dataset.baseUrgencyTone || card.dataset.urgencyTone,
+      estimated_return: card.dataset.estimatedReturn,
+      token_price: card.dataset.assetTokenPrice,
+      holding_quantity: card.dataset.assetHolding,
+    });
+    const seed = buildCardSeed(card.dataset.assetCode);
+
+    return {
+      card: card,
+      seed: seed,
+      random: createSeededRandom(seed),
+      typeKey: card.dataset.assetTypeKey || "",
+      baseUrgencyLabel: card.dataset.baseUrgencyLabel || snapshot.urgency_label,
+      baseUrgencyTone: card.dataset.baseUrgencyTone || snapshot.urgency_tone,
+      real: Object.assign({}, snapshot),
+      visible: Object.assign({}, snapshot),
+      activityScore: Number((0.3 + ((seed % 5) * 0.12)).toFixed(2)),
+      timeoutId: null,
+    };
+  }
+
+  function maybeAdvanceOpportunity(cardState, config) {
+    const next = Object.assign({}, cardState.real);
+    const sellableTokens = Math.max(next.tokens_available, 0);
+    if (sellableTokens <= 0) {
+      cardState.activityScore = Math.max(cardState.activityScore * 0.6, 0.15);
+      next.activity_score = Number(cardState.activityScore.toFixed(2));
+      return next;
+    }
+
+    const soldRatio = next.total_tokens ? next.tokens_sold / next.total_tokens : 0;
+    const returnFactor = clampNumber(next.estimated_return / 20, 0.2, 1);
+    const progressFactor = soldRatio >= 0.65 ? 0.75 : soldRatio <= 0.2 ? 0.55 : 0.65;
+    const activityFactor = clampNumber(config.activityIntensity * (0.75 + returnFactor + progressFactor), 0.08, 0.95);
+    const movementChance = activityFactor * (0.48 + (cardState.random() * 0.35));
+
+    if (cardState.random() > movementChance) {
+      cardState.activityScore = Math.max(cardState.activityScore * 0.78, 0.18);
+      next.activity_score = Number(cardState.activityScore.toFixed(2));
+      return next;
+    }
+
+    const maxDelta = sellableTokens <= 8 ? 1 : sellableTokens <= 20 ? 2 : 3;
+    const delta = Math.max(1, Math.min(maxDelta, Math.ceil(cardState.random() * maxDelta * config.activityIntensity)));
+    next.tokens_sold = clampNumber(next.tokens_sold + delta, 0, next.total_tokens);
+    next.tokens_available = Math.max(next.total_tokens - next.tokens_sold, 0);
+    next.progress_percent = next.total_tokens ? Math.round((next.tokens_sold / next.total_tokens) * 100) : 0;
+    next.capital_raised = next.tokens_sold * next.token_price;
+    next.capital_remaining = next.tokens_available * next.token_price;
+    next.participants_estimate = Math.max(next.participants_estimate, Math.ceil(next.tokens_sold / Math.max(4, 6 - Math.round(config.activityIntensity * 2))));
+    cardState.activityScore = clampNumber(cardState.activityScore + (delta * 0.7), 0.3, 4.2);
+    next.activity_score = Number(cardState.activityScore.toFixed(2));
+    return next;
+  }
+
+  function scheduleOpportunitySimulation(cardState, config) {
+    if (!config.demoMode || !config.animatedTokenFlow) {
+      return;
+    }
+
+    const run = function () {
+      const minInterval = Math.max(1400, Number(config.minUpdateInterval) || 3200);
+      const maxInterval = Math.max(minInterval + 400, Number(config.maxUpdateInterval) || 7600);
+      const interval = Math.round(minInterval + ((maxInterval - minInterval) * cardState.random()));
+
+      cardState.timeoutId = window.setTimeout(function () {
+        const nextVisible = maybeAdvanceOpportunity(cardState, config);
+        const visual = computeOpportunityPresentation(nextVisible, cardState, config);
+        cardState.visible = nextVisible;
+        renderOpportunityCard(cardState.card, nextVisible, { visual: visual, highlight: nextVisible.tokens_sold !== cardState.real.tokens_sold });
+        scheduleOpportunitySimulation(cardState, config);
+      }, interval);
+    };
+
+    run();
+  }
+
+  function initOpportunityDemo(root) {
+    const cards = collectOpportunityCards(root);
+    if (!cards.length) {
+      return;
+    }
+
+    opportunityDemo.config = readOpportunityDemoConfig(root);
+    opportunityDemo.cards.clear();
+
+    cards.forEach(function (card) {
+      const cardState = buildOpportunityCardState(card);
+      const visual = computeOpportunityPresentation(cardState.visible, cardState, opportunityDemo.config);
+      opportunityDemo.cards.set(card.dataset.assetCode, cardState);
+      renderOpportunityCard(card, cardState.visible, { visual: visual, highlight: false });
+      scheduleOpportunitySimulation(cardState, opportunityDemo.config);
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     const root = document.querySelector("[data-investment-root]");
     const modal = document.getElementById("agt-investment-modal");
     if (!root || !modal) {
       return;
     }
+
+    initOpportunityDemo(root);
 
     const formState = modal.querySelector('[data-invest-state="form"]');
     const processingState = modal.querySelector('[data-invest-state="processing"]');
@@ -453,6 +859,13 @@
       modal.querySelector("[data-certificate-contract]").textContent = responseData.contract.contract_id;
       modal.querySelector("[data-certificate-status]").textContent = responseData.contract.status;
       modal.querySelector("[data-certificate-validation]").textContent = responseData.contract.blockchain_status;
+      const downloadCertificate = modal.querySelector("[data-download-certificate]");
+      if (downloadCertificate) {
+        downloadCertificate.setAttribute("href", responseData.contract.download_pdf_url);
+        downloadCertificate.removeAttribute("aria-disabled");
+        downloadCertificate.classList.remove("is-disabled");
+      }
+      updateRecentCertificates(responseData.contract, currentAsset.dataset.assetName);
       setState("certificate");
     }
 
@@ -491,4 +904,6 @@
       });
     }
   });
+
+  initWalletSummaryAccordion();
 })();

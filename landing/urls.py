@@ -1,6 +1,14 @@
 from django.urls import path
 
-from .views import asset_detail, blockchain_ledger, home, invest_asset_tokens, investor_panel, purchase_asset_tokens
+from .views import (
+    asset_detail,
+    blockchain_ledger,
+    download_digital_certificate,
+    home,
+    invest_asset_tokens,
+    investor_panel,
+    purchase_asset_tokens,
+)
 
 
 urlpatterns = [
@@ -9,5 +17,6 @@ urlpatterns = [
     path('activos/<str:code>/comprar/', purchase_asset_tokens, name='purchase_asset_tokens'),
     path('activos/<str:code>/invertir/', invest_asset_tokens, name='invest_asset_tokens'),
     path('panel/blockchain/', blockchain_ledger, name='blockchain_ledger'),
+    path('panel/certificados/<str:certificate_id>/pdf/', download_digital_certificate, name='download_digital_certificate'),
     path('panel/inversionista/', investor_panel, name='investor_panel'),
 ]

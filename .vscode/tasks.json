@@ -1,0 +1,31 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "AgroTech: runserver 8000",
+      "type": "process",
+      "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+      "args": [
+        "manage.py",
+        "runserver",
+        "127.0.0.1:8000",
+        "--noreload"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "django",
+        "pattern": {
+          "regexp": "."
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*Starting development server at.*",
+          "endsPattern": ".*Quit the server with CTRL-BREAK.*"
+        }
+      }
+    }
+  ]
+}

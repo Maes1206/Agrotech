@@ -1,0 +1,14 @@
+services:
+  web:
+    build:
+      context: .
+    ports:
+      - "8000:8000"
+    environment:
+      DJANGO_DEBUG: "true"
+      DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1,0.0.0.0,.ngrok-free.dev,.ngrok.app,.ngrok.dev"
+      DJANGO_CSRF_TRUSTED_ORIGINS: "https://*.ngrok-free.dev,https://*.ngrok.app,https://*.ngrok.dev"
+      PAYPAL_CLIENT_ID: "${PAYPAL_CLIENT_ID:-}"
+    volumes:
+      - .:/app
+    command: python manage.py runserver 0.0.0.0:8000

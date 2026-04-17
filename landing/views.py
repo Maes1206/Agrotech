@@ -8,12 +8,14 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login
 from django.db.models import Count, Sum
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 
+from .certificates import build_contract_certificate_pdf
 from .forms import InvestorPanelForm, LoginForm, RegisterForm
 from .models import (
     AssetStatusHistory,
@@ -35,6 +37,77 @@ LINKED_CARD_SESSION_KEY = "agrotech_linked_card"
 def _asset_image_path(asset):
     image_index = ((asset.display_order or 1) - 1) % 6 + 1
     return f"images/Tokens/{image_index}.jpg"
+
+
+ASSET_MAP_LOCATIONS = {
+    "FARM-001": {
+        "zone": "Norte del Huila",
+        "municipality": "Palermo",
+        "department": "Huila",
+        "latitude": "2.9316",
+        "longitude": "-75.5078",
+        "map_x": 41,
+        "map_y": 28,
+    },
+    "FARM-002": {
+        "zone": "Centro del Huila",
+        "municipality": "Campoalegre",
+        "department": "Huila",
+        "latitude": "2.6237",
+        "longitude": "-75.3899",
+        "map_x": 56,
+        "map_y": 48,
+    },
+    "FARM-003": {
+        "zone": "Sur del Huila",
+        "municipality": "Garzon",
+        "department": "Huila",
+        "latitude": "2.1428",
+        "longitude": "-75.6948",
+        "map_x": 45,
+        "map_y": 72,
+    },
+}
+
+DEMO_TOKEN_STATE_OVERRIDES = {
+    "LOT-002": {
+        "tokens_sold": 64,
+    },
+}
+
+
+def _get_effective_token_state(tokenized_asset):
+    total_tokens = tokenized_asset.total_tokens or 0
+    tokens_available = tokenized_asset.tokens_available or 0
+    tokens_sold = tokenized_asset.tokens_sold
+    overrides = DEMO_TOKEN_STATE_OVERRIDES.get(tokenized_asset.asset.code, {})
+
+    if "tokens_sold" in overrides:
+        tokens_sold = max(0, min(total_tokens, int(overrides["tokens_sold"])))
+        tokens_available = max(total_tokens - tokens_sold, 0)
+
+    return {
+        "total_tokens": total_tokens,
+        "tokens_sold": tokens_sold,
+        "tokens_available": tokens_available,
+    }
+
+
+def _asset_map_context(asset):
+    default_location = {
+        "zone": "Huila",
+        "municipality": asset.farm.municipality,
+        "department": asset.farm.department,
+        "latitude": "2.5359",
+        "longitude": "-75.5277",
+        "map_x": 50,
+        "map_y": 50,
+    }
+    location = {**default_location, **ASSET_MAP_LOCATIONS.get(asset.farm.code, {})}
+    location["farm_name"] = asset.farm.name
+    location["asset_name"] = asset.name
+    location["asset_code"] = asset.code
+    return location
 
 
 def _ensure_investor_profile(user):
@@ -164,9 +237,10 @@ def _build_default_btc_amount(tokenized_asset):
 
 
 def _resolve_investment_badge(tokenized_asset):
-    total_tokens = tokenized_asset.total_tokens or 0
-    tokens_available = tokenized_asset.tokens_available or 0
-    tokens_sold = tokenized_asset.tokens_sold
+    token_state = _get_effective_token_state(tokenized_asset)
+    total_tokens = token_state["total_tokens"]
+    tokens_available = token_state["tokens_available"]
+    tokens_sold = token_state["tokens_sold"]
     funding_pct = int((tokens_sold / total_tokens) * 100) if total_tokens else 0
     almost_threshold = max(3, math.ceil(total_tokens * 0.08)) if total_tokens else 0
     demand_threshold = max(10, math.ceil(total_tokens * 0.2)) if total_tokens else 0
@@ -181,12 +255,13 @@ def _resolve_investment_badge(tokenized_asset):
 
 
 def _estimate_participants(tokenized_asset):
+    token_state = _get_effective_token_state(tokenized_asset)
     actual = tokenized_asset.holdings.count()
     if actual:
         return actual
-    if tokenized_asset.tokens_sold <= 0:
+    if token_state["tokens_sold"] <= 0:
         return 0
-    return max(1, math.ceil(tokenized_asset.tokens_sold / 6))
+    return max(1, math.ceil(token_state["tokens_sold"] / 6))
 
 
 def _format_compact_millions(value):
@@ -240,11 +315,13 @@ def _build_wallet_snapshot(user, portfolio=None, transactions=None):
 
 def _build_asset_snapshot(tokenized_asset, user=None, holding_quantity=None, total_invested=None):
     asset = tokenized_asset.asset
-    total_tokens = tokenized_asset.total_tokens
-    tokens_sold = tokenized_asset.tokens_sold
+    token_state = _get_effective_token_state(tokenized_asset)
+    total_tokens = token_state["total_tokens"]
+    tokens_sold = token_state["tokens_sold"]
+    tokens_available = token_state["tokens_available"]
     progress_percent = int((tokens_sold / total_tokens) * 100) if total_tokens else 0
     capital_raised = Decimal(tokens_sold) * tokenized_asset.token_price
-    capital_remaining = Decimal(tokenized_asset.tokens_available) * tokenized_asset.token_price
+    capital_remaining = Decimal(tokens_available) * tokenized_asset.token_price
     urgency_label, urgency_tone = _resolve_investment_badge(tokenized_asset)
     participants_estimate = _estimate_participants(tokenized_asset)
     holding_quantity = holding_quantity or 0
@@ -259,7 +336,7 @@ def _build_asset_snapshot(tokenized_asset, user=None, holding_quantity=None, tot
         "asset": asset,
         "image_path": _asset_image_path(asset),
         "total_tokens": total_tokens,
-        "tokens_available": tokenized_asset.tokens_available,
+        "tokens_available": tokens_available,
         "tokens_sold": tokens_sold,
         "progress_percent": progress_percent,
         "funding_percent": progress_percent,
@@ -275,14 +352,14 @@ def _build_asset_snapshot(tokenized_asset, user=None, holding_quantity=None, tot
         "user_participation_pct": user_participation_pct.quantize(Decimal("0.01")),
         "status_label": (
             "Finalizado"
-            if tokenized_asset.tokens_available <= 0
+            if tokens_available <= 0
             else "En proceso"
             if tokens_sold > 0
             else "Disponible"
         ),
         "status_tone": (
             "finalized"
-            if tokenized_asset.tokens_available <= 0
+            if tokens_available <= 0
             else "progress"
             if tokens_sold > 0
             else "available"
@@ -338,6 +415,7 @@ def _serialize_contract(contract, blockchain_record):
         "contract_hash": blockchain_record.contract_hash,
         "blockchain_status": blockchain_record.get_status_display(),
         "confirmed_at": timezone.localtime(blockchain_record.confirmed_at).strftime("%Y-%m-%d %H:%M:%S"),
+        "download_pdf_url": reverse("download_digital_certificate", args=[contract.certificate_id]),
     }
 
 
@@ -563,6 +641,7 @@ def asset_detail(request, code):
     context = {
         "asset": asset,
         "asset_snapshot": asset_snapshot,
+        "asset_map": _asset_map_context(asset),
         "asset_image_path": _asset_image_path(asset),
         "agrotech_token_price_cop": settings.AGROTECH_TOKEN_PRICE_COP,
         "paypal_client_id": settings.PAYPAL_CLIENT_ID,
@@ -885,6 +964,27 @@ def investor_panel(request):
         ],
     }
     return render(request, "investor-panel.html", context)
+
+
+@login_required
+def download_digital_certificate(request, certificate_id):
+    contract = get_object_or_404(
+        DigitalContract.objects.select_related(
+            "user",
+            "tokenized_asset__asset__farm",
+            "blockchain_record",
+        ),
+        user=request.user,
+        certificate_id=certificate_id,
+    )
+    blockchain_record = getattr(contract, "blockchain_record", None)
+    if blockchain_record is None:
+        return HttpResponse("El certificado aun no tiene confirmacion en blockchain.", status=409)
+
+    pdf_bytes = build_contract_certificate_pdf(contract, blockchain_record)
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{contract.certificate_id}.pdf"'
+    return response
 
 
 @login_required

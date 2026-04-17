@@ -1,0 +1,36 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "AgroTech: Django 8000",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/manage.py",
+      "args": [
+        "runserver",
+        "127.0.0.1:8000",
+        "--noreload"
+      ],
+      "django": true,
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "python": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
+    },
+    {
+      "name": "AgroTech: Browser 8000",
+      "type": "pwa-chrome",
+      "request": "launch",
+      "url": "http://127.0.0.1:8000",
+      "webRoot": "${workspaceFolder}"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "AgroTech: Server + Browser",
+      "configurations": [
+        "AgroTech: Django 8000",
+        "AgroTech: Browser 8000"
+      ]
+    }
+  ]
+}

@@ -39,6 +39,14 @@
           <h3>Capital listo para asignar a oportunidades activas</h3>
           <p>Adquiere participación digital en este activo. Tu inversión quedará respaldada por un contrato digital de copropiedad y un registro hash en blockchain.</p>
         </div>
+        <button type="button" class="agt-wallet-summary__toggle" data-wallet-summary-toggle aria-expanded="false">
+          <span class="agt-wallet-summary__toggle-copy">
+            <strong>Ver wallet AGT</strong>
+            <small>Despliega saldo, rendimiento y capital disponible</small>
+          </span>
+          <span class="agt-wallet-summary__toggle-icon" aria-hidden="true"></span>
+        </button>
+        <div class="agt-wallet-summary__body" data-wallet-summary-body>
         <div class="agt-wallet-summary__stats">
           <article class="agt-stat-card">
             <span>Tokens AGT disponibles</span>
@@ -78,6 +86,7 @@
           </article>
         </div>
         </div>
+        </div>
       </section>
       {% endif %}
 
@@ -86,7 +95,7 @@
         <div class="investor-card-layout">
           <div class="investor-card-main">
             <span class="investor-card__eyebrow">Calculadora AgroTech</span>
-            <p>Calcula y compra tokens AGT dentro de la demo. Cada token AgroTech mantiene un precio fijo de {{ agrotech_token_price_cop|floatformat:0|intcomma }} COP.</p>
+            <p>Calcula y compra tokens AGT con BTC. Cada pago queda respaldado con tecnologia blockchain, registra trazabilidad digital y se procesa en un entorno 100% seguro.</p>
 
             <form
               method="post"
@@ -105,7 +114,7 @@
                 <h3>Token AgroTech</h3>
               </div>
               <div class="investor-form-grid">
-                <div class="investor-field">
+                <div class="investor-field investor-field--calculator">
                   <label for="id_btc_amount">Monto en BTC</label>
                   {{ panel_form.btc_amount }}
                   <div class="investor-field__hint" id="btc-live-rate">≈ 1 BTC = ${{ demo_btc_usd_rate|floatformat:0|intcomma }} USD</div>
@@ -127,14 +136,19 @@
                   </div>
                   {% endif %}
                 </div>
+                <article class="investor-agt-spot-card" aria-label="Resumen del token AGT">
+                  <div class="investor-agt-spot-card__copy">
+                    <span>AGT</span>
+                    <strong>Pago respaldado con BTC</strong>
+                    <small>Tecnologia: Blockchain</small>
+                    <b>Pago 100% seguro</b>
+                  </div>
+                  <img src="{% static 'images/icons/icon.png' %}" alt="Moneda AGT" class="investor-agt-spot-card__coin">
+                </article>
                 <div class="investor-metric investor-metric--tokens investor-metric--primary" id="calc-tokens-metric">
                   <span>Tokens AGT estimados</span>
                   <div class="investor-token-metric__value">
                     <strong id="calc-tokens-value" data-value="{% if calculation %}{{ calculation.estimated_tokens }}{% else %}0{% endif %}">{% if calculation %}{{ calculation.estimated_tokens }}{% else %}0{% endif %}</strong>
-                    <span class="investor-token-metric__symbol">
-                      <img src="{% static 'images/resource/f-image-7.png' %}" alt="Moneda AgroTech" class="investor-token-metric__coin">
-                      <b>AGT</b>
-                    </span>
                   </div>
                 </div>
               </div>
@@ -167,13 +181,12 @@
             <div class="investor-chips">
               <span>1 BTC = ${{ demo_btc_usd_rate|floatformat:2 }} USD</span>
               <span>1 BTC = ${{ demo_btc_cop_rate|floatformat:0|intcomma }} COP</span>
-              <span id="selected-asset-tokens-chip">{{ selected_asset.tokens_available }} tokens disponibles</span>
             </div>
           </div>
 
           <aside class="investor-wallet-panel" aria-label="Wallet AgroTech">
             <div class="investor-wallet-panel__head">
-              <span>Wallet visual</span>
+              <span>Wallet sin tokenizar</span>
               <h4>Metodos de pago vinculados</h4>
               <p>Consulta los medios de pago asociados al inversionista y visualiza el balance total disponible dentro del entorno demo AgroTech.</p>
             </div>
@@ -404,20 +417,21 @@
                   <h4>Trazabilidad reciente del inversionista</h4>
                 </div>
               </div>
-              <div class="agt-contract-list">
+              <div class="agt-contract-list" data-recent-certificates-list>
                 {% for contract in recent_contracts %}
-                <article class="agt-contract-list__item">
+                <article class="agt-contract-list__item agt-contract-list__item--certificate" data-certificate-id="{{ contract.certificate_id }}">
                   <div>
                     <strong>{{ contract.tokenized_asset.asset.name }}</strong>
-                    <span>{{ contract.contract_id }}</span>
+                    <span>{{ contract.certificate_id }}</span>
                   </div>
                   <div>
                     <strong>{{ contract.tokens_acquired }} AGT</strong>
                     <span>{{ contract.issued_at|date:"Y-m-d H:i" }}</span>
                   </div>
+                  <a href="{% url 'download_digital_certificate' contract.certificate_id %}" class="agt-contract-list__download">Descargar PDF</a>
                 </article>
                 {% empty %}
-                <p class="agt-contract-card__placeholder">Aún no has emitido certificados digitales de participación.</p>
+                <p class="agt-contract-card__placeholder" data-certificates-empty>Aún no has emitido certificados digitales de participación.</p>
                 {% endfor %}
               </div>
             </div>
@@ -426,7 +440,7 @@
       </section>
 
       {% if opportunity_assets %}
-      <section class="investor-opportunities" data-investment-root data-token-price="{{ agrotech_token_price_cop }}" data-wallet-tokens="{{ wallet_snapshot.tokens_available }}" data-investor-name="{{ request.user.get_full_name|default:request.user.username }}" data-portfolio-url="{% url 'investor_panel' %}" data-transactions-target="investment-transactions-body">
+      <section class="investor-opportunities" data-investment-root data-token-price="{{ agrotech_token_price_cop }}" data-wallet-tokens="{{ wallet_snapshot.tokens_available }}" data-investor-name="{{ request.user.get_full_name|default:request.user.username }}" data-portfolio-url="{% url 'investor_panel' %}" data-transactions-target="investment-transactions-body" data-demo-mode="true" data-animated-token-flow="true" data-classification-mode="smart" data-demo-min-update-interval="3200" data-demo-max-update-interval="7600" data-demo-activity-intensity="0.45">
         <div class="investor-opportunities__head">
           <div class="investor-opportunities__copy">
             <h3>Oportunidades activas</h3>
@@ -445,6 +459,7 @@
             data-asset-code="{{ item.asset.code }}"
             data-asset-name="{{ item.asset.name }}"
             data-asset-type="{% if item.asset.asset_type == 'lot' %}Lote{% else %}Individual{% endif %}"
+            data-asset-type-key="{{ item.asset.asset_type }}"
             data-asset-category="{{ item.asset.category.name }}"
             data-asset-producer="{{ item.asset.producer.name }}"
             data-asset-farm="{{ item.asset.farm.name }}"
@@ -468,6 +483,8 @@
             data-participants-estimate="{{ item.participants_estimate }}"
             data-urgency-label="{{ item.urgency_label }}"
             data-urgency-tone="{{ item.urgency_tone }}"
+            data-base-urgency-label="{{ item.urgency_label }}"
+            data-base-urgency-tone="{{ item.urgency_tone }}"
             data-estimated-return="{{ item.asset.estimated_return_pct|floatformat:2 }}"
             data-invest-endpoint="{% url 'invest_asset_tokens' item.asset.code %}"
             tabindex="0"
@@ -632,6 +649,7 @@
               </div>
               <div class="agt-certificate__actions">
                 <button type="button" class="theme-btn btn-style-eight" data-view-contract><span class="txt">Ver contrato digital</span></button>
+                <a href="{% if selected_contract %}{% url 'download_digital_certificate' selected_contract.certificate_id %}{% else %}#{% endif %}" class="theme-btn btn-style-twelve{% if not selected_contract %} is-disabled{% endif %}" data-download-certificate{% if not selected_contract %} aria-disabled="true"{% endif %}><span class="txt">Descargar PDF</span></a>
                 <a href="{% url 'investor_panel' %}" class="theme-btn btn-style-twelve"><span class="txt">Ver en portafolio</span></a>
                 <button type="button" class="agt-inline-link" data-close-investment-modal>Cerrar</button>
               </div>
@@ -820,7 +838,6 @@
       }
 
       const selectedAssetCodeInput = document.getElementById("selected-asset-code-input");
-      const selectedAssetTokensChip = document.getElementById("selected-asset-tokens-chip");
       const checkoutAssetName = document.getElementById("checkout-asset-name");
       const portfolioPanelBadge = document.getElementById("portfolio-panel-badge");
       const portfolioPanelGrid = document.getElementById("portfolio-panel-grid");
@@ -861,10 +878,6 @@
 
         if (selectedAssetCodeInput) {
           selectedAssetCodeInput.value = data.assetCode || "";
-        }
-
-        if (selectedAssetTokensChip) {
-          selectedAssetTokensChip.textContent = (data.assetTokensAvailable || "0") + " tokens disponibles";
         }
 
         if (typeof form !== "undefined" && form) {
@@ -1557,6 +1570,7 @@
   <script src="{% static 'js/agrotech-investment.js' %}"></script>
 </body>
 </html>
+
 
 
 

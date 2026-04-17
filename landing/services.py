@@ -79,6 +79,32 @@ def buy_tokens(user, tokenized_asset, quantity):
             transaction_type=TokenTransaction.BUY,
         )
 
+        contract_id, certificate_id = _build_contract_identifiers(locked_asset, transaction_record.pk)
+        digital_contract = DigitalContract.objects.create(
+            user=user,
+            tokenized_asset=locked_asset,
+            transaction=transaction_record,
+            contract_id=contract_id,
+            certificate_id=certificate_id,
+            tokens_acquired=quantity,
+            participation_pct=Decimal(holding.participation * 100).quantize(Decimal("0.0001")),
+            investment_value_cop=total_cost,
+            estimated_return_pct=locked_asset.asset.estimated_return_pct,
+            status=DigitalContract.ACTIVE,
+            issued_at=timezone.now(),
+        )
+
+        tx_hash, contract_hash, block_id = _build_blockchain_values(user, locked_asset, quantity, total_cost)
+        blockchain_record = BlockchainRecord.objects.create(
+            transaction=transaction_record,
+            digital_contract=digital_contract,
+            tx_hash=tx_hash,
+            block_id=block_id,
+            contract_hash=contract_hash,
+            status=BlockchainRecord.CONFIRMED,
+            confirmed_at=timezone.now(),
+        )
+
         return BuyTokensResult(
             success=True,
             message="Compra realizada correctamente.",
@@ -87,6 +113,8 @@ def buy_tokens(user, tokenized_asset, quantity):
             tokens_available=locked_asset.tokens_available,
             total_cost=total_cost,
             participation=holding.participation,
+            digital_contract=digital_contract,
+            blockchain_record=blockchain_record,
         )
 
 

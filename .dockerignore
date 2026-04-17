@@ -1,0 +1,11 @@
+.git
+.gitignore
+.venv
+.vscode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+db.sqlite3
+db.sqlite3.pre-custom-user.bak
+media/
