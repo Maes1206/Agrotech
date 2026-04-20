@@ -120,7 +120,7 @@
                   </div>
                   <div>
                     <span>Capital restante</span>
-                    <strong data-detail-capital-remaining>${{ asset_snapshot.capital_remaining|floatformat:0|intcomma }}</strong>
+                    <strong data-detail-capital-remaining>${{ asset_snapshot.capital_available|floatformat:0|intcomma }} COP</strong>
                   </div>
                   <div>
                     <span>Participantes</span>
@@ -157,7 +157,8 @@
                   data-total-tokens="{{ asset_snapshot.total_tokens }}"
                   data-tokens-sold="{{ asset_snapshot.tokens_sold }}"
                   data-capital-raised="{{ asset_snapshot.capital_raised|floatformat:0 }}"
-                  data-capital-remaining="{{ asset_snapshot.capital_remaining|floatformat:0 }}"
+                  data-capital-available="{{ asset_snapshot.capital_available|floatformat:0 }}"
+                  data-capital-remaining="{{ asset_snapshot.capital_available|floatformat:0 }}"
                   data-participants-estimate="{{ asset_snapshot.participants_estimate }}"
                   data-urgency-label="{{ asset_snapshot.urgency_label }}"
                   data-urgency-tone="{{ asset_snapshot.urgency_tone }}"

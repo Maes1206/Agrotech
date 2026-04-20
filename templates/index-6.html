@@ -16,7 +16,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
 <link href="{% static 'css/responsive.css' %}" rel="stylesheet">
 <!-- Template styles -->
-<link href="{% static 'css/index-6.css' %}" rel="stylesheet">
+<link href="{% static 'css/index-6.css' %}?v=20260420-1" rel="stylesheet">
 
 </head>
 
@@ -337,7 +337,11 @@
                 <!--Column-->
                 <div class="image-col col-xl-6 col-lg-6 col-md-12 col-sm-12">
                     <div class="inner">
-                        <div class="image"><img src="{% static 'images/resource/f-image-8.png' %}" alt=""></div>
+                        <div class="image">
+                            <video class="why-section-five__video" autoplay muted loop playsinline preload="auto">
+                                <source src="{% static 'video/Agrotech.mp4' %}" type="video/mp4">
+                            </video>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -806,14 +810,14 @@
                             <div class="lower-box">
                                 <div class="text">Holding: los inversores pueden ahorrar</div>
                             </div>
-                            <div class="date"><span>January 2022</span></div>
+                            <div class="date"><span>Mant&eacute;n tu posici&oacute;n</span></div>
                         </div>
                     </div>
 
                     <div class="roadmap-block-five down-side">
                         <div class="radio-icon"></div>
                         <div class="inner-box">
-                            <div class="date"><span>March 2022</span></div>
+                            <div class="date"><span>Salida opcional</span></div>
                             <div class="lower-box">
                                 <div class="text">Si desean, pueden vender tokens</div>
                             </div>
@@ -1437,7 +1441,7 @@
 <script src="https://unpkg.com/lightweight-charts@5.0.0/dist/lightweight-charts.standalone.production.js"></script>
 <script src="{% static 'js/agrotech-token-chart.js' %}"></script>
 <!-- Template scripts -->
-<script src="{% static 'js/index-6.js' %}"></script>
+<script src="{% static 'js/index-6.js' %}?v=20260418-2"></script>
 </body>
 </html>
 

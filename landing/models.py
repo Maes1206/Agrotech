@@ -384,9 +384,11 @@ class TokenHolding(TimeStampedModel):
 
 class TokenTransaction(TimeStampedModel):
     BUY = "buy"
+    WALLET_BUY = "wallet_buy"
 
     TRANSACTION_TYPE_CHOICES = [
         (BUY, "Compra"),
+        (WALLET_BUY, "Compra con wallet AGT"),
     ]
 
     user = models.ForeignKey(

@@ -1,4 +1,11 @@
 (function () {
+  const TOKEN_FACE_VALUE_COP = 100000;
+  const copCurrencyFormatter = new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0,
+  });
+
   function initWalletSummaryAccordion() {
     document.querySelectorAll("[data-wallet-summary]").forEach(function (summary) {
       var toggle = summary.querySelector("[data-wallet-summary-toggle]");
@@ -58,7 +65,41 @@
   }
 
   function formatCurrency(value) {
-    return "$" + formatNumber(value) + " COP";
+    const numeric = Number(value || 0);
+    return copCurrencyFormatter.format(Number.isFinite(numeric) ? numeric : 0);
+  }
+
+  function calculateAvailableCapital(value) {
+    const tokensAvailable = Math.max(toInteger(value), 0);
+    return tokensAvailable * TOKEN_FACE_VALUE_COP;
+  }
+
+  function buildOpportunityMarketMetrics(totalTokens, tokensSold) {
+    const normalizedTotalTokens = Math.max(toInteger(totalTokens), 0);
+    const normalizedTokensSold = clampNumber(toInteger(tokensSold), 0, normalizedTotalTokens);
+    const tokensAvailable = Math.max(normalizedTotalTokens - normalizedTokensSold, 0);
+
+    return {
+      total_tokens: normalizedTotalTokens,
+      tokens_sold: normalizedTokensSold,
+      tokens_available: tokensAvailable,
+      capital_available: calculateAvailableCapital(tokensAvailable),
+      capital_raised: calculateAvailableCapital(normalizedTokensSold),
+    };
+  }
+
+  function formatCompactValue(value) {
+    const numeric = Number(value || 0);
+    if (!Number.isFinite(numeric)) {
+      return "0";
+    }
+    if (numeric >= 1000000) {
+      return (numeric / 1000000).toFixed(2) + "M";
+    }
+    if (Math.round(numeric) === numeric) {
+      return formatNumber(numeric);
+    }
+    return numeric.toFixed(2);
   }
 
   function escapeHtml(value) {
@@ -169,31 +210,26 @@
   }
 
   function normalizeOpportunitySnapshot(input) {
-    const totalTokens = Math.max(toInteger(input.total_tokens), 0);
-    const tokensSold = clampNumber(toInteger(input.tokens_sold), 0, totalTokens);
-    const tokensAvailable = clampNumber(
-      input.tokens_available !== undefined ? toInteger(input.tokens_available) : totalTokens - tokensSold,
-      0,
-      totalTokens
-    );
+    const marketMetrics = buildOpportunityMarketMetrics(input.total_tokens, input.tokens_sold);
     const tokenPrice = Number(input.token_price || 0);
     const estimatedReturn = Number(input.estimated_return || 0);
-    const progressPercent = totalTokens ? Math.round((tokensSold / totalTokens) * 100) : 0;
-    const capitalRemaining = input.capital_remaining !== undefined
-      ? Number(input.capital_remaining)
-      : tokensAvailable * tokenPrice;
+    const progressPercent = marketMetrics.total_tokens ? Math.round((marketMetrics.tokens_sold / marketMetrics.total_tokens) * 100) : 0;
+    const capitalAvailable = input.capital_available !== undefined
+      ? Number(input.capital_available)
+      : marketMetrics.capital_available;
     const capitalRaised = input.capital_raised !== undefined
       ? Number(input.capital_raised)
-      : tokensSold * tokenPrice;
+      : marketMetrics.capital_raised;
 
     return {
       code: input.code || "",
-      total_tokens: totalTokens,
-      tokens_sold: tokensSold,
-      tokens_available: tokensAvailable,
+      total_tokens: marketMetrics.total_tokens,
+      tokens_sold: marketMetrics.tokens_sold,
+      tokens_available: marketMetrics.tokens_available,
       token_price: tokenPrice,
       estimated_return: estimatedReturn,
-      capital_remaining: capitalRemaining,
+      capital_available: capitalAvailable,
+      capital_remaining: capitalAvailable,
       capital_raised: capitalRaised,
       participants_estimate: Math.max(toInteger(input.participants_estimate), 0),
       urgency_label: input.urgency_label || "Disponible",
@@ -288,7 +324,7 @@
     const availabilityCopy = card.querySelector("[data-asset-availability-copy]");
     const urgencyLabel = card.querySelector("[data-asset-urgency-label]");
     const capitalRaised = card.querySelector("[data-asset-capital-raised]");
-    const capitalRemaining = card.querySelector("[data-asset-capital-remaining]");
+    const capitalAvailable = card.querySelector("[data-asset-capital-available]");
     const participants = card.querySelector("[data-asset-participants]");
     const availableTokens = card.querySelector("[data-asset-tokens-available]");
     const priceAmount = card.querySelector("[data-asset-price-amount]");
@@ -314,8 +350,8 @@
     if (capitalRaised) {
       capitalRaised.textContent = formatCurrency(snapshot.capital_raised);
     }
-    if (capitalRemaining) {
-      capitalRemaining.textContent = formatCurrency(snapshot.capital_remaining);
+    if (capitalAvailable) {
+      capitalAvailable.textContent = formatCurrency(snapshot.capital_available);
     }
     if (participants) {
       participants.textContent = snapshot.participants_estimate;
@@ -324,7 +360,7 @@
       availableTokens.textContent = snapshot.tokens_available + " tokens";
     }
     if (priceAmount) {
-      priceAmount.textContent = "$" + formatNumber(snapshot.capital_remaining);
+      priceAmount.textContent = formatCurrency(snapshot.capital_available);
     }
 
     card.style.setProperty("--token-flow-duration", (visual.flow_duration || 1.4) + "s");
@@ -369,6 +405,9 @@
     document.querySelectorAll("[data-wallet-tokens]").forEach(function (item) {
       item.textContent = snapshot.tokens_available;
     });
+    document.querySelectorAll("[data-wallet-pocket-tokens]").forEach(function (item) {
+      item.textContent = snapshot.tokens_available + " AGT";
+    });
     document.querySelectorAll("[data-wallet-equivalent]").forEach(function (item) {
       item.textContent = formatNumber(snapshot.equivalent_cop);
     });
@@ -383,6 +422,26 @@
     });
   }
 
+  function syncMarketAvailability() {
+    let totalTokens = 0;
+    let totalCapital = 0;
+
+    document.querySelectorAll(".investor-opportunity-card[data-asset-code]").forEach(function (card) {
+      const tokensAvailable = toInteger(card.dataset.assetTokensAvailable);
+      const capitalAvailable = Number(card.dataset.capitalAvailable || 0);
+      totalTokens += Math.max(tokensAvailable, 0);
+      totalCapital += Number.isFinite(capitalAvailable) ? Math.max(capitalAvailable, 0) : 0;
+    });
+
+    document.querySelectorAll("[data-market-tokens]").forEach(function (item) {
+      item.textContent = formatNumber(totalTokens);
+    });
+
+    document.querySelectorAll("[data-market-equivalent]").forEach(function (item) {
+      item.textContent = formatCompactValue(totalCapital);
+    });
+  }
+
   function updateAssetCard(snapshot) {
     document.querySelectorAll('.investor-opportunity-card[data-asset-code="' + snapshot.code + '"]').forEach(function (card) {
       const normalized = normalizeOpportunitySnapshot(snapshot);
@@ -393,6 +452,7 @@
       card.dataset.tokensSold = String(normalized.tokens_sold);
       card.dataset.totalTokens = String(normalized.total_tokens);
       card.dataset.capitalRaised = String(normalized.capital_raised);
+      card.dataset.capitalAvailable = String(normalized.capital_available);
       card.dataset.capitalRemaining = String(normalized.capital_remaining);
       card.dataset.participantsEstimate = String(normalized.participants_estimate);
       card.dataset.urgencyLabel = normalized.urgency_label;
@@ -417,6 +477,7 @@
       opportunityDemo.cards.set(card.dataset.assetCode, cardState);
       scheduleOpportunitySimulation(cardState, opportunityDemo.config);
     });
+    syncMarketAvailability();
   }
 
   function updateDetailPanels(snapshot, position) {
@@ -428,6 +489,7 @@
         openButton.dataset.tokensSold = String(snapshot.tokens_sold);
         openButton.dataset.totalTokens = String(snapshot.total_tokens);
         openButton.dataset.capitalRaised = String(snapshot.capital_raised);
+        openButton.dataset.capitalAvailable = String(snapshot.capital_available);
         openButton.dataset.capitalRemaining = String(snapshot.capital_remaining);
         openButton.dataset.participantsEstimate = String(snapshot.participants_estimate);
         openButton.dataset.urgencyLabel = snapshot.urgency_label;
@@ -466,7 +528,7 @@
     }
     const capitalRemaining = document.querySelector("[data-detail-capital-remaining]");
     if (capitalRemaining) {
-      capitalRemaining.textContent = formatCurrency(snapshot.capital_remaining);
+      capitalRemaining.textContent = formatCurrency(snapshot.capital_available);
     }
     const participants = document.querySelector("[data-detail-participants]");
     if (participants) {
@@ -567,6 +629,7 @@
       tokens_sold: card.dataset.tokensSold,
       tokens_available: card.dataset.assetTokensAvailable,
       capital_raised: card.dataset.capitalRaised,
+      capital_available: card.dataset.capitalAvailable,
       capital_remaining: card.dataset.capitalRemaining,
       participants_estimate: card.dataset.participantsEstimate,
       urgency_label: card.dataset.baseUrgencyLabel || card.dataset.urgencyLabel,
@@ -594,6 +657,7 @@
   function maybeAdvanceOpportunity(cardState, config) {
     const next = Object.assign({}, cardState.real);
     const sellableTokens = Math.max(next.tokens_available, 0);
+
     if (sellableTokens <= 0) {
       cardState.activityScore = Math.max(cardState.activityScore * 0.6, 0.15);
       next.activity_score = Number(cardState.activityScore.toFixed(2));
@@ -614,12 +678,6 @@
 
     const maxDelta = sellableTokens <= 8 ? 1 : sellableTokens <= 20 ? 2 : 3;
     const delta = Math.max(1, Math.min(maxDelta, Math.ceil(cardState.random() * maxDelta * config.activityIntensity)));
-    next.tokens_sold = clampNumber(next.tokens_sold + delta, 0, next.total_tokens);
-    next.tokens_available = Math.max(next.total_tokens - next.tokens_sold, 0);
-    next.progress_percent = next.total_tokens ? Math.round((next.tokens_sold / next.total_tokens) * 100) : 0;
-    next.capital_raised = next.tokens_sold * next.token_price;
-    next.capital_remaining = next.tokens_available * next.token_price;
-    next.participants_estimate = Math.max(next.participants_estimate, Math.ceil(next.tokens_sold / Math.max(4, 6 - Math.round(config.activityIntensity * 2))));
     cardState.activityScore = clampNumber(cardState.activityScore + (delta * 0.7), 0.3, 4.2);
     next.activity_score = Number(cardState.activityScore.toFixed(2));
     return next;
@@ -639,7 +697,12 @@
         const nextVisible = maybeAdvanceOpportunity(cardState, config);
         const visual = computeOpportunityPresentation(nextVisible, cardState, config);
         cardState.visible = nextVisible;
+        cardState.card.dataset.assetTokensAvailable = String(nextVisible.tokens_available);
+        cardState.card.dataset.tokensSold = String(nextVisible.tokens_sold);
+        cardState.card.dataset.capitalAvailable = String(nextVisible.capital_available);
+        cardState.card.dataset.capitalRemaining = String(nextVisible.capital_remaining);
         renderOpportunityCard(cardState.card, nextVisible, { visual: visual, highlight: nextVisible.tokens_sold !== cardState.real.tokens_sold });
+        syncMarketAvailability();
         scheduleOpportunitySimulation(cardState, config);
       }, interval);
     };
@@ -663,6 +726,8 @@
       renderOpportunityCard(card, cardState.visible, { visual: visual, highlight: false });
       scheduleOpportunitySimulation(cardState, opportunityDemo.config);
     });
+
+    syncMarketAvailability();
   }
 
   document.addEventListener("DOMContentLoaded", function () {
@@ -682,10 +747,38 @@
     const quantityInput = modal.querySelector("[data-invest-quantity-input]");
     const quantitySlider = modal.querySelector("[data-invest-quantity-slider]");
     const confirmButton = modal.querySelector("[data-confirm-investment]");
+    const balanceNote = modal.querySelector("[data-invest-balance-note]");
     const validation = modal.querySelector("[data-invest-validation]");
     const stepperItems = createStepper(modal.querySelector("[data-stepper]"));
     let currentAsset = null;
     let currentTrigger = null;
+
+    function updateBalanceNote(walletTokens, assetTokens, maxTokens) {
+      if (!balanceNote) {
+        return;
+      }
+
+      if (assetTokens <= 0) {
+        balanceNote.hidden = false;
+        balanceNote.textContent = "Este activo no tiene tokens disponibles en este momento.";
+        return;
+      }
+
+      if (walletTokens <= 0) {
+        balanceNote.hidden = false;
+        balanceNote.textContent = "Este activo tiene " + assetTokens + " tokens disponibles, pero tu wallet AGT no tiene saldo para invertir ahora.";
+        return;
+      }
+
+      if (walletTokens < assetTokens) {
+        balanceNote.hidden = false;
+        balanceNote.textContent = "El activo tiene " + assetTokens + " tokens disponibles. Tu wallet AGT tiene " + walletTokens + ", por eso ahora puedes invertir hasta " + maxTokens + ".";
+        return;
+      }
+
+      balanceNote.hidden = false;
+      balanceNote.textContent = "Este activo tiene " + assetTokens + " tokens disponibles y tu wallet AGT alcanza para invertir hasta " + maxTokens + ".";
+    }
 
     function setState(name) {
       [formState, processingState, certificateState].forEach(function (state) {
@@ -698,11 +791,15 @@
       currentAsset = source.closest("[data-invest-endpoint]") || source;
       const walletTokens = toInteger(root.dataset.walletTokens);
       const assetTokens = toInteger(currentAsset.dataset.assetTokensAvailable);
-      const maxTokens = Math.max(1, Math.min(walletTokens, assetTokens));
-      quantityInput.max = String(maxTokens);
-      quantitySlider.max = String(maxTokens);
-      quantityInput.value = "1";
-      quantitySlider.value = "1";
+      const maxTokens = Math.max(Math.min(walletTokens, assetTokens), 0);
+      const initialQuantity = maxTokens > 0 ? 1 : 0;
+
+      quantityInput.min = maxTokens > 0 ? "1" : "0";
+      quantitySlider.min = maxTokens > 0 ? "1" : "0";
+      quantityInput.max = String(Math.max(maxTokens, initialQuantity));
+      quantitySlider.max = String(Math.max(maxTokens, initialQuantity));
+      quantityInput.value = String(initialQuantity);
+      quantitySlider.value = String(initialQuantity);
 
       modal.querySelector("[data-modal-asset-name]").textContent = currentAsset.dataset.assetName;
       modal.querySelector("[data-modal-asset-copy]").textContent = "Tu inversión quedará respaldada por un contrato digital de copropiedad. La operación será registrada mediante hash en blockchain y actualizará el portafolio AgroTech.";
@@ -716,6 +813,7 @@
       modal.querySelector("[data-modal-asset-tokens]").textContent = assetTokens;
       modal.querySelector("[data-modal-participants]").textContent = currentAsset.dataset.participantsEstimate || "0";
       modal.querySelector("[data-modal-asset-badge]").textContent = currentAsset.dataset.urgencyLabel || "Disponible";
+      updateBalanceNote(walletTokens, assetTokens, maxTokens);
       validation.hidden = true;
       validation.textContent = "";
       confirmButton.disabled = false;
@@ -728,6 +826,10 @@
     function closeModal() {
       modal.classList.remove("is-open");
       document.body.style.overflow = "";
+      if (balanceNote) {
+        balanceNote.hidden = true;
+        balanceNote.textContent = "";
+      }
       currentAsset = null;
       currentTrigger = null;
     }
@@ -748,6 +850,9 @@
       const tokenPrice = toInteger(currentAsset.dataset.assetTokenPrice);
       const totalTokens = toInteger(currentAsset.dataset.totalTokens);
       const estimatedReturn = Number(currentAsset.dataset.estimatedReturn || "0");
+      const maxTokens = Math.max(Math.min(walletTokens, assetTokens), 0);
+
+      updateBalanceNote(walletTokens, assetTokens, maxTokens);
 
       validation.hidden = true;
       confirmButton.disabled = false;

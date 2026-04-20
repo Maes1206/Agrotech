@@ -9,8 +9,8 @@
 <link href="{% static 'css/bootstrap.css' %}" rel="stylesheet">
 <link href="{% static 'css/style.css' %}" rel="stylesheet">
 <link href="{% static 'css/responsive.css' %}" rel="stylesheet">
-<link href="{% static 'css/investor-panel.css' %}" rel="stylesheet">
-<link href="{% static 'css/agrotech-investment.css' %}" rel="stylesheet">
+<link href="{% static 'css/investor-panel.css' %}?v=20260418-2" rel="stylesheet">
+<link href="{% static 'css/agrotech-investment.css' %}?v=20260418-1" rel="stylesheet">
 </head>
 <body>
   <div class="investor-shell">
@@ -50,17 +50,17 @@
         <div class="agt-wallet-summary__stats">
           <article class="agt-stat-card">
             <span>Tokens AGT disponibles</span>
-            <strong data-wallet-tokens>{{ wallet_snapshot.tokens_available }}</strong>
-            <small>Liquidez inmediata para nuevas posiciones</small>
+            <strong data-market-tokens>{{ total_available_tokens }}</strong>
+            <small>Suma de tokens invertibles en activos abiertos</small>
           </article>
           <article class="agt-stat-card">
             <span>Disponible para invertir</span>
             <strong class="agt-stat-card__metric">
               <span class="agt-stat-card__prefix">$</span>
-                <span class="agt-stat-card__value" data-wallet-equivalent>{{ wallet_snapshot.equivalent_cop_compact }}</span>
+                <span class="agt-stat-card__value" data-market-equivalent>{{ total_available_capital_compact }}</span>
               <span class="agt-stat-card__suffix">COP</span>
             </strong>
-            <small>Equivalente estimado del saldo AGT</small>
+            <small>Capital disponible total en activos abiertos</small>
           </article>
           <article class="agt-stat-card">
             <span>Activos en portafolio</span>
@@ -103,7 +103,7 @@
               data-btc-usd-rate="{{ demo_btc_usd_rate }}"
               data-btc-cop-rate="{{ demo_btc_cop_rate }}"
               data-token-price-cop="{{ agrotech_token_price_cop }}"
-              data-available-tokens="{{ selected_asset.tokens_available }}"
+              data-available-tokens="{{ total_available_tokens }}"
             >
               {% csrf_token %}
               <input type="hidden" name="panel_action" id="investor-panel-action" value="">
@@ -130,6 +130,7 @@
                     >
                   </div>
                   <p class="investor-field__message" id="btc-live-message">Estas comprando aproximadamente {% if calculation %}{{ calculation.estimated_tokens }}{% else %}0{% endif %} tokens AGT.</p>
+                  <div class="investor-field__hint investor-field__hint--max" id="btc-max-availability">Máximo disponible ahora: {{ total_available_tokens }} tokens AGT en activos abiertos.</div>
                   {% if panel_form.btc_amount.errors %}
                   <div class="investor-alert investor-alert--error" style="margin-top:12px; margin-bottom:0;">
                     {{ panel_form.btc_amount.errors|join:", " }}
@@ -170,11 +171,11 @@
                 </button>
               </div>
               <div
-                class="investor-alert investor-alert--error{% if not calculation or calculation.estimated_tokens <= selected_asset.tokens_available %} is-hidden{% endif %}"
+                class="investor-alert investor-alert--error{% if not calculation or calculation.estimated_tokens <= total_available_tokens %} is-hidden{% endif %}"
                 id="investor-live-error"
                 style="margin-top:14px; margin-bottom:0;"
               >
-                El monto estimado supera la disponibilidad actual. Solo hay {{ selected_asset.tokens_available }} tokens AGT disponibles para compra.
+                El monto estimado supera la disponibilidad actual. Solo hay {{ total_available_tokens }} tokens AGT disponibles en los activos abiertos.
               </div>
             </form>
 
@@ -192,9 +193,9 @@
             </div>
 
             <div class="app-container">
-              <div class="wallet{% if not linked_card %} wallet--empty{% endif %}" id="linked-wallet" data-storage-key="agrotechLinkedCard:{{ request.user.id }}" data-linked-holder="{{ linked_card.holder|default:'' }}" data-linked-last4="{{ linked_card.last4|default:'' }}">
+              <div class="wallet{% if not wallet_has_display_card %} wallet--empty{% endif %}" id="linked-wallet" data-storage-key="agrotechLinkedCard:{{ request.user.id }}" data-linked-holder="{{ linked_card.holder|default:'' }}" data-linked-last4="{{ linked_card.last4|default:'' }}" data-has-display-card="{{ wallet_has_display_card|yesno:'true,false' }}" data-default-holder="{{ holder_name|upper|truncatechars:18 }}" data-default-last4="4242">
                 <div class="wallet-back"></div>
-                <div class="wallet-empty-state" id="wallet-empty-state"{% if linked_card %} style="display:none;"{% endif %}>
+                <div class="wallet-empty-state" id="wallet-empty-state"{% if wallet_has_display_card %} style="display:none;"{% endif %}>
                   <strong>Sin tarjeta vinculada</strong>
                   <span>Agrega una tarjeta en el checkout para verla aqu&iacute; dentro de tu wallet.</span>
                 </div>
@@ -226,11 +227,17 @@
                     <path d="M 8 22 C 8 16, 12 16, 15 16 C 23 16, 27 29, 40 29 L 240 29 C 253 29, 257 16, 265 16 C 268 16, 272 16, 272 22 L 272 120 C 272 150, 255 152, 240 152 L 40 152 C 25 152, 8 152, 8 120 Z" stroke="#3d5635" stroke-width="1.5" stroke-dasharray="6 4"></path>
                   </svg>
                   <div class="pocket-content">
-                    <div style="position: relative; height: 24px; width: 100%;">
+                    <div class="wallet-balance-slot">
                       <div class="balance-stars">******</div>
-                      <div class="balance-real">${{ portfolio_balance_cop|floatformat:0|intcomma }}</div>
+                      <div class="balance-real">
+                        <div class="balance-real__primary">{{ wallet_balance_btc|floatformat:6 }} BTC</div>
+                        <div class="balance-real__secondary">&asymp; ${{ wallet_balance_cop|floatformat:0|intcomma }} COP</div>
+                      </div>
                     </div>
-                    <div style="color: #698263; font-size: 12px; font-weight: 500;">
+                    <div class="wallet-balance-tokens" data-wallet-pocket-tokens>
+                      {{ wallet_snapshot.tokens_available }} AGT
+                    </div>
+                    <div class="wallet-balance-label">
                       Total Balance
                     </div>
                     <div class="eye-icon-wrapper">
@@ -468,7 +475,7 @@
             data-asset-projected-value="${{ item.asset.projected_value|floatformat:0|intcomma }} COP"
             data-asset-return="{{ item.asset.estimated_return_pct|floatformat:1 }}%"
             data-asset-tokens-available="{{ item.tokens_available }}"
-            data-asset-token-price="{{ item.asset.token_price|floatformat:0 }}"
+            data-asset-token-price="{{ item.token_price_cop|floatformat:0 }}"
             data-asset-holding="{{ item.holding_quantity }}"
             data-asset-total-invested="${{ item.total_invested|floatformat:0|intcomma }} COP"
             data-asset-start-date="{{ item.asset.start_date }}"
@@ -479,7 +486,8 @@
             data-total-tokens="{{ item.total_tokens }}"
             data-tokens-sold="{{ item.tokens_sold }}"
             data-capital-raised="{{ item.capital_raised|floatformat:0 }}"
-            data-capital-remaining="{{ item.capital_remaining|floatformat:0 }}"
+            data-capital-available="{{ item.capital_available|floatformat:0 }}"
+            data-capital-remaining="{{ item.capital_available|floatformat:0 }}"
             data-participants-estimate="{{ item.participants_estimate }}"
             data-urgency-label="{{ item.urgency_label }}"
             data-urgency-tone="{{ item.urgency_tone }}"
@@ -541,8 +549,7 @@
                     <div class="investor-opportunity-card__price-copy">
                       <span>Capital disponible</span>
                       <strong>
-                        <span class="investor-opportunity-card__price-amount" data-asset-price-amount>${{ item.available_investment_total|floatformat:0|intcomma }}</span>
-                        <span class="investor-opportunity-card__price-currency">COP</span>
+                        <span class="investor-opportunity-card__price-amount" data-asset-price-amount data-asset-capital-available>${{ item.capital_available|floatformat:0|intcomma }} COP</span>
                       </strong>
                     </div>
                   </div>
@@ -601,6 +608,7 @@
                     <input type="range" min="1" step="1" value="1" data-invest-quantity-slider>
                   </div>
                 </div>
+                <div class="agt-inline-alert agt-inline-alert--info" data-invest-balance-note hidden></div>
                 <div class="agt-inline-alert" data-invest-validation hidden></div>
                 <div class="agt-investment-kpis">
                   <article><span>Total equivalente</span><strong data-invest-total-cop>$0 COP</strong></article>
@@ -695,6 +703,17 @@
               <div class="checkout-brand">Pago seguro</div>
               <h4>Tarjeta de cr&eacute;dito</h4>
               <p class="checkout-form__copy">Ingresa los datos de la tarjeta para confirmar la compra de tokens y actualizar tu wallet dentro del panel.</p>
+              <p class="checkout-note" id="checkout-saved-card-note"{% if not linked_card %} style="display:none;"{% endif %}>Usaremos tu tarjeta vinculada terminada en {% if linked_card and linked_card.last4 %}{{ linked_card.last4 }}{% else %}4242{% endif %} si no ingresas una nueva.</p>
+              <div class="checkout-saved-card"{% if not linked_card %} style="display:none;"{% endif %} id="checkout-saved-card-banner">
+                <div class="checkout-saved-card__brand">
+                  <span class="checkout-saved-card__bank">Bancolombia</span>
+                  <small>Tarjeta guardada</small>
+                </div>
+                <div class="checkout-saved-card__meta">
+                  <strong id="checkout-saved-card-holder">{% if linked_card and linked_card.holder %}{{ linked_card.holder|upper|truncatechars:18 }}{% else %}{{ holder_name|upper|truncatechars:18 }}{% endif %}</strong>
+                  <span id="checkout-saved-card-last4">**** {% if linked_card and linked_card.last4 %}{{ linked_card.last4 }}{% else %}4242{% endif %}</span>
+                </div>
+              </div>
               <div class="checkout-fields">
                 <div class="checkout-field">
                   <label for="checkout-card-name">Titular</label>
@@ -880,11 +899,8 @@
           selectedAssetCodeInput.value = data.assetCode || "";
         }
 
-        if (typeof form !== "undefined" && form) {
-          form.dataset.availableTokens = data.assetTokensAvailable || "0";
-          if (data.assetTokenPrice) {
-            form.dataset.tokenPriceCop = data.assetTokenPrice;
-          }
+        if (typeof form !== "undefined" && form && data.assetTokenPrice) {
+          form.dataset.tokenPriceCop = data.assetTokenPrice;
         }
 
         if (typeof openBtn !== "undefined" && openBtn) {
@@ -1024,6 +1040,7 @@
       const btcSlider = document.getElementById("btc-amount-slider");
       const btcLiveRate = document.getElementById("btc-live-rate");
       const btcLiveMessage = document.getElementById("btc-live-message");
+      const btcMaxAvailability = document.getElementById("btc-max-availability");
       const liveError = document.getElementById("investor-live-error");
       const calcTokensMetric = document.getElementById("calc-tokens-metric");
       const calcUsdMetric = document.getElementById("calc-usd-metric");
@@ -1035,6 +1052,10 @@
       const cardNumber = document.getElementById("checkout-card-number");
       const cardExpiry = document.getElementById("checkout-card-expiry");
       const cardCvv = document.getElementById("checkout-card-cvv");
+      const checkoutSavedCardNote = document.getElementById("checkout-saved-card-note");
+      const checkoutSavedCardBanner = document.getElementById("checkout-saved-card-banner");
+      const checkoutSavedCardHolder = document.getElementById("checkout-saved-card-holder");
+      const checkoutSavedCardLast4 = document.getElementById("checkout-saved-card-last4");
       const modalBtc = document.getElementById("checkout-btc");
       const modalUsd = document.getElementById("checkout-usd");
       const modalCop = document.getElementById("checkout-cop");
@@ -1046,6 +1067,9 @@
       const walletCardNumber = document.getElementById("wallet-card-number");
       const walletBankCard = document.getElementById("wallet-bank-card");
       const walletStorageKey = (wallet && wallet.dataset.storageKey) || "agrotechLinkedCard";
+      const walletHasDisplayCard = wallet ? wallet.dataset.hasDisplayCard === "true" : false;
+      const walletDefaultHolder = wallet ? (wallet.dataset.defaultHolder || "") : "";
+      const walletDefaultLast4 = wallet && /^\d{4}$/.test(String(wallet.dataset.defaultLast4 || "")) ? String(wallet.dataset.defaultLast4) : "4242";
       const linkedCardHolderInput = document.getElementById("linked-card-holder-input");
       const linkedCardLast4Input = document.getElementById("linked-card-last4-input");
       const serverLinkedCard = wallet ? {
@@ -1089,14 +1113,6 @@
         return Math.max(parseInt(form.dataset.availableTokens || "0", 10) || 0, 0);
       };
 
-      if (btcInput) {
-        btcInput.value = "0.000000";
-      }
-
-      if (btcSlider) {
-        btcSlider.value = "0.000000";
-      }
-
       const sanitizeBtcInput = function (rawValue) {
         const value = String(rawValue || "").replace(/,/g, ".").replace(/[^\d.]/g, "");
         if (!value) {
@@ -1119,6 +1135,18 @@
         return Math.max(parseNumeric(btcInput.value), 0);
       };
 
+      const initializeBtcControls = function () {
+        const initialAmount = 0;
+
+        btcInput.value = initialAmount.toFixed(6);
+
+        if (btcSlider) {
+          btcSlider.value = initialAmount.toFixed(6);
+        }
+
+        return initialAmount;
+      };
+
       const calculateQuote = function (btcAmount) {
         const amount = Number.isFinite(btcAmount) ? Math.max(btcAmount, 0) : 0;
         const equivalentUsd = amount * btcUsdRate;
@@ -1137,8 +1165,10 @@
         };
       };
 
+      const initialBtcAmount = initializeBtcControls();
+
       const quoteState = {
-        quote: calculateQuote(getBtcAmount()),
+        quote: calculateQuote(initialBtcAmount),
         currentTokens: parseInt(calcTokensValue.dataset.value || calcTokensValue.textContent || "0", 10) || 0,
         tokenAnimationFrame: null,
         feedbackTimer: null,
@@ -1237,13 +1267,13 @@
         }
 
         if (quote.estimatedTokens > quote.availableTokens && quote.availableTokens > 0) {
-          liveError.textContent = "El monto estimado supera la disponibilidad actual. Solo hay " + quote.availableTokens + " tokens AGT disponibles para compra.";
+          liveError.textContent = "El monto estimado supera la disponibilidad actual. Solo hay " + quote.availableTokens + " tokens AGT disponibles en los activos abiertos.";
           liveError.classList.remove("is-hidden");
           return;
         }
 
         if (quote.availableTokens <= 0) {
-          liveError.textContent = "Este activo no tiene tokens AGT disponibles para compra en este momento.";
+          liveError.textContent = "No hay tokens AGT disponibles para compra en los activos abiertos en este momento.";
           liveError.classList.remove("is-hidden");
           return;
         }
@@ -1263,6 +1293,10 @@
 
         if (btcLiveMessage) {
           btcLiveMessage.textContent = "Estas comprando aproximadamente " + quote.estimatedTokens + " tokens AGT.";
+        }
+
+        if (btcMaxAvailability) {
+          btcMaxAvailability.textContent = "Máximo disponible ahora: " + quote.availableTokens + " tokens AGT en activos abiertos.";
         }
 
         if (openBtn) {
@@ -1311,6 +1345,55 @@
         return digits.slice(0, 2) + "/" + digits.slice(2);
       };
 
+      const getSavedLinkedCard = function () {
+        if (!linkedCardLast4Input || !/^\d{4}$/.test(String(linkedCardLast4Input.value || ""))) {
+          return null;
+        }
+
+        return {
+          holder: linkedCardHolderInput && linkedCardHolderInput.value ? String(linkedCardHolderInput.value) : "",
+          last4: String(linkedCardLast4Input.value)
+        };
+      };
+
+      const hasManualCardInput = function () {
+        return Boolean(
+          (cardName && cardName.value.trim()) ||
+          (cardNumber && cardNumber.value.trim()) ||
+          (cardExpiry && cardExpiry.value.trim()) ||
+          (cardCvv && cardCvv.value.trim())
+        );
+      };
+
+      const updateSavedCardNote = function () {
+        if (!checkoutSavedCardNote) {
+          return;
+        }
+
+        const savedCard = getSavedLinkedCard();
+        if (!savedCard) {
+          checkoutSavedCardNote.style.display = "none";
+          if (checkoutSavedCardBanner) {
+            checkoutSavedCardBanner.style.display = "none";
+          }
+          return;
+        }
+
+        checkoutSavedCardNote.style.display = "";
+        if (checkoutSavedCardBanner) {
+          checkoutSavedCardBanner.style.display = "";
+        }
+        if (checkoutSavedCardHolder) {
+          checkoutSavedCardHolder.textContent = (savedCard.holder || "{{ holder_name|upper|truncatechars:18 }}").toUpperCase().slice(0, 18);
+        }
+        if (checkoutSavedCardLast4) {
+          checkoutSavedCardLast4.textContent = "**** " + savedCard.last4;
+        }
+        checkoutSavedCardNote.textContent = hasManualCardInput()
+          ? "Estás ingresando una nueva tarjeta. Si confirmas, reemplazará la tarjeta vinculada actual."
+          : "Usaremos tu tarjeta vinculada terminada en " + savedCard.last4 + " si no ingresas una nueva.";
+      };
+
       const playLinkedCardAnimation = function () {
         if (!walletBankCard) {
           return;
@@ -1329,6 +1412,23 @@
         }
       };
 
+      const applyWalletDisplayCard = function () {
+        if (!wallet || !walletEmptyState || !walletCardHolder || !walletCardHidden || !walletCardNumber) {
+          return;
+        }
+
+        wallet.classList.remove("wallet--empty");
+        walletEmptyState.style.display = "none";
+        if (walletBankCard) {
+          walletBankCard.classList.remove("is-linking");
+        }
+        syncLinkedCardInputs(null);
+        walletCardHolder.textContent = walletDefaultHolder;
+        walletCardHidden.textContent = "**** " + walletDefaultLast4;
+        walletCardNumber.textContent = "**** **** **** " + walletDefaultLast4;
+        updateSavedCardNote();
+      };
+
       const applyLinkedCard = function (payload, options) {
         const shouldAnimate = Boolean(options && options.animate);
         if (!wallet || !walletEmptyState || !walletCardHolder || !walletCardHidden || !walletCardNumber) {
@@ -1342,18 +1442,20 @@
             walletBankCard.classList.remove("is-linking");
           }
           syncLinkedCardInputs(null);
-          walletCardHolder.textContent = "{{ holder_name|upper|truncatechars:18 }}";
-          walletCardHidden.textContent = "**** 4242";
-          walletCardNumber.textContent = "**** **** **** 4242";
+          walletCardHolder.textContent = walletDefaultHolder;
+          walletCardHidden.textContent = "**** " + walletDefaultLast4;
+          walletCardNumber.textContent = "**** **** **** " + walletDefaultLast4;
+          updateSavedCardNote();
           return;
         }
 
         wallet.classList.remove("wallet--empty");
         walletEmptyState.style.display = "none";
         syncLinkedCardInputs(payload);
-        walletCardHolder.textContent = (payload.holder || "{{ holder_name|upper|truncatechars:18 }}").toUpperCase().slice(0, 18);
+        walletCardHolder.textContent = (payload.holder || walletDefaultHolder).toUpperCase().slice(0, 18);
         walletCardHidden.textContent = "**** " + payload.last4;
         walletCardNumber.textContent = "**** **** **** " + payload.last4;
+        updateSavedCardNote();
         if (shouldAnimate) {
           playLinkedCardAnimation();
         }
@@ -1368,9 +1470,21 @@
             return;
           }
           window.localStorage.removeItem(walletStorageKey);
+          if (walletHasDisplayCard) {
+            applyWalletDisplayCard();
+            return;
+          }
           applyLinkedCard(null, { animate: false });
         } catch (error) {
-          applyLinkedCard(hasServerCard ? serverLinkedCard : null, { animate: false });
+          if (hasServerCard) {
+            applyLinkedCard(serverLinkedCard, { animate: false });
+            return;
+          }
+          if (walletHasDisplayCard) {
+            applyWalletDisplayCard();
+            return;
+          }
+          applyLinkedCard(null, { animate: false });
         }
       };
 
@@ -1391,19 +1505,26 @@
       if (cardNumber) {
         cardNumber.addEventListener("input", function () {
           cardNumber.value = normalizeCardNumber(cardNumber.value);
+          updateSavedCardNote();
         });
       }
 
       if (cardExpiry) {
         cardExpiry.addEventListener("input", function () {
           cardExpiry.value = normalizeExpiry(cardExpiry.value);
+          updateSavedCardNote();
         });
       }
 
       if (cardCvv) {
         cardCvv.addEventListener("input", function () {
           cardCvv.value = cardCvv.value.replace(/\D/g, "").slice(0, 4);
+          updateSavedCardNote();
         });
+      }
+
+      if (cardName) {
+        cardName.addEventListener("input", updateSavedCardNote);
       }
 
       form.addEventListener("submit", function (event) {
@@ -1447,7 +1568,8 @@
       }
 
       loadLinkedCard();
-      refreshQuote();
+      updateSavedCardNote();
+      renderQuote(quoteState.quote);
 
       if (wallet) {
         const clearWalletInteraction = function () {
@@ -1486,6 +1608,7 @@
         if (openBtn.disabled) {
           return;
         }
+        updateSavedCardNote();
         syncCheckoutSummary();
         openModal();
       };
@@ -1520,7 +1643,16 @@
           return;
         }
 
-        if (!cardName.value.trim() || cardNumber.value.replace(/\D/g, "").length < 16 || cardExpiry.value.length < 5 || cardCvv.value.length < 3) {
+        const savedCard = getSavedLinkedCard();
+        const usingSavedCard = Boolean(savedCard) && !hasManualCardInput();
+        const hasValidNewCard = Boolean(
+          cardName.value.trim() &&
+          cardNumber.value.replace(/\D/g, "").length >= 16 &&
+          cardExpiry.value.length >= 5 &&
+          cardCvv.value.length >= 3
+        );
+
+        if (!usingSavedCard && !hasValidNewCard) {
           window.alert("Completa los datos de la tarjeta para continuar.");
           return;
         }
@@ -1535,7 +1667,11 @@
           return;
         }
 
-        saveLinkedCard();
+        if (usingSavedCard) {
+          syncLinkedCardInputs(savedCard);
+        } else {
+          saveLinkedCard();
+        }
         processing.classList.add("is-active");
         confirmBtn.disabled = true;
         actionInput.value = "buy";
@@ -1570,8 +1706,3 @@
   <script src="{% static 'js/agrotech-investment.js' %}"></script>
 </body>
 </html>
-
-
-
-
-

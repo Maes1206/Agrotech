@@ -700,6 +700,13 @@
     font-weight: 700;
 }
 
+.agt-inline-alert--info {
+    background: rgba(31, 107, 56, .08);
+    color: #225733;
+    border: 1px solid rgba(31, 107, 56, .14);
+    font-weight: 600;
+}
+
 .agt-investment-kpis {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

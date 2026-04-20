@@ -34,6 +34,25 @@ def ensure_wallet(user):
     return wallet
 
 
+def top_up_wallet(user, quantity):
+    if quantity <= 0:
+        return BuyTokensResult(success=False, message="La cantidad debe ser mayor que cero.")
+
+    with transaction.atomic():
+        wallet = Wallet.objects.select_for_update().filter(user=user).first()
+        if not wallet:
+            wallet = Wallet.objects.create(user=user, agt_balance=settings.AGROTECH_DEMO_WALLET_TOKENS)
+
+        wallet.agt_balance += quantity
+        wallet.save(update_fields=["agt_balance", "updated_at"])
+
+        return BuyTokensResult(
+            success=True,
+            message="Recarga AGT realizada correctamente.",
+            wallet=wallet,
+        )
+
+
 def buy_tokens(user, tokenized_asset, quantity):
     if quantity <= 0:
         return BuyTokensResult(success=False, message="La cantidad debe ser mayor que cero.")
@@ -214,7 +233,7 @@ def invest_with_agt_wallet(user, tokenized_asset, quantity):
             quantity=quantity,
             price_per_token=locked_asset.token_price,
             total_amount=total_cost,
-            transaction_type=TokenTransaction.BUY,
+            transaction_type=TokenTransaction.WALLET_BUY,
         )
 
         contract_id, certificate_id = _build_contract_identifiers(locked_asset, transaction_record.pk)

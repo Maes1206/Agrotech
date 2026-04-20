@@ -8,7 +8,12 @@ services:
       DJANGO_DEBUG: "true"
       DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1,0.0.0.0,.ngrok-free.dev,.ngrok.app,.ngrok.dev"
       DJANGO_CSRF_TRUSTED_ORIGINS: "https://*.ngrok-free.dev,https://*.ngrok.app,https://*.ngrok.dev"
+      DJANGO_DB_NAME: "/data/db.sqlite3"
       PAYPAL_CLIENT_ID: "${PAYPAL_CLIENT_ID:-}"
     volumes:
       - .:/app
+      - django_db:/data
     command: python manage.py runserver 0.0.0.0:8000
+
+volumes:
+  django_db:

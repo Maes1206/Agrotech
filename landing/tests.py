@@ -14,8 +14,10 @@ from .models import (
     TokenizedAsset,
     User,
     UserProfile,
+    Wallet,
 )
 from .services import buy_tokens
+from .views import _build_token_market_metrics
 
 
 class BuyTokensServiceTests(TestCase):
@@ -242,20 +244,40 @@ class InvestorPanelTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["calculation"]["estimated_tokens"], 26)
 
-    def test_investor_panel_buy_updates_portfolio(self):
+    def test_token_market_metrics_apply_fixed_face_value_to_mock_data(self):
+        metrics = _build_token_market_metrics(total_tokens=40, tokens_sold=32)
+
+        self.assertEqual(metrics["tokens_available"], 8)
+        self.assertEqual(metrics["capital_available"], Decimal("800000"))
+
+    def test_investor_panel_renders_dynamic_available_capital_in_cards(self):
         self.client.login(username="paneluser", password="ClaveSegura123*")
+
+        response = self.client.get(reverse("investor_panel"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-capital-available="10000000"')
+        self.assertContains(response, "$10.000.000 COP")
+
+    def test_investor_panel_buy_recharges_wallet_without_updating_portfolio(self):
+        self.client.login(username="paneluser", password="ClaveSegura123*")
+        initial_wallet = Wallet.objects.get(user=self.user).agt_balance
         response = self.client.post(
             reverse("investor_panel"),
             data={"btc_amount": "0.05000", "panel_action": "buy"},
         )
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers["Location"], reverse("investor_panel") + f"?asset={self.asset.code}")
         self.tokenized_asset.refresh_from_db()
         self.asset.refresh_from_db()
-        self.assertEqual(self.tokenized_asset.tokens_available, 74)
-        self.assertEqual(self.asset.available_units, 74)
-        self.assertTrue(TokenHolding.objects.filter(user=self.user, tokenized_asset=self.tokenized_asset, quantity=26).exists())
-        self.assertEqual(TokenTransaction.objects.filter(user=self.user).count(), 1)
+        wallet = Wallet.objects.get(user=self.user)
+        self.assertEqual(wallet.agt_balance, initial_wallet + 26)
+        self.assertEqual(self.tokenized_asset.tokens_available, 100)
+        self.assertEqual(self.asset.available_units, 100)
+        self.assertFalse(TokenHolding.objects.filter(user=self.user, tokenized_asset=self.tokenized_asset).exists())
+        self.assertEqual(TokenTransaction.objects.filter(user=self.user).count(), 0)
+        self.assertEqual(DigitalContract.objects.filter(user=self.user).count(), 0)
 
     def test_investor_panel_buy_persists_linked_card_in_session(self):
         self.client.login(username="paneluser", password="ClaveSegura123*")
@@ -270,9 +292,25 @@ class InvestorPanelTests(TestCase):
             },
         )
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 302)
         self.assertEqual(self.client.session["agrotech_linked_card"], {"holder": "Panel User", "last4": "4242"})
-        self.assertEqual(response.context["linked_card"], {"holder": "Panel User", "last4": "4242"})
+
+    def test_investor_panel_buy_redirect_prevents_duplicate_top_up_on_refresh(self):
+        self.client.login(username="paneluser", password="ClaveSegura123*")
+        initial_wallet = Wallet.objects.get(user=self.user).agt_balance
+
+        post_response = self.client.post(
+            reverse("investor_panel"),
+            data={"btc_amount": "0.05000", "panel_action": "buy"},
+        )
+
+        self.assertEqual(post_response.status_code, 302)
+
+        get_response = self.client.get(post_response.headers["Location"])
+
+        self.assertEqual(get_response.status_code, 200)
+        wallet = Wallet.objects.get(user=self.user)
+        self.assertEqual(wallet.agt_balance, initial_wallet + 26)
 
     def test_investor_panel_renders_server_linked_card(self):
         self.client.login(username="paneluser", password="ClaveSegura123*")
@@ -286,6 +324,28 @@ class InvestorPanelTests(TestCase):
         self.assertContains(response, 'data-linked-last4="4242"')
         self.assertContains(response, "**** **** **** 4242")
         self.assertNotContains(response, 'class="wallet wallet--empty"')
+
+    def test_investor_panel_keeps_wallet_visible_when_demo_balance_exists_without_session_card(self):
+        self.client.login(username="paneluser", password="ClaveSegura123*")
+
+        response = self.client.get(reverse("investor_panel"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-has-display-card="true"')
+        self.assertNotContains(response, 'class="wallet wallet--empty"')
+        self.assertContains(response, "23 AGT")
+
+    def test_investor_panel_shows_empty_wallet_only_when_balance_and_linked_card_are_missing(self):
+        self.client.login(username="paneluser", password="ClaveSegura123*")
+        wallet = Wallet.objects.get(user=self.user)
+        wallet.agt_balance = 0
+        wallet.save(update_fields=["agt_balance", "updated_at"])
+
+        response = self.client.get(reverse("investor_panel"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'class="wallet wallet--empty"')
+        self.assertContains(response, "Sin tarjeta vinculada")
 
     def test_investor_panel_includes_selected_non_featured_asset_in_opportunities(self):
         self.client.login(username="paneluser", password="ClaveSegura123*")
@@ -301,6 +361,18 @@ class InvestorPanelTests(TestCase):
         self.assertEqual(len(selected_cards), 1)
         self.assertTrue(selected_cards[0]["is_selected"])
 
+    def test_investor_panel_uses_total_available_tokens_when_selected_asset_is_exhausted(self):
+        self.client.login(username="paneluser", password="ClaveSegura123*")
+        self.tokenized_asset.tokens_available = 0
+        self.tokenized_asset.save(update_fields=["tokens_available", "updated_at"])
+
+        response = self.client.get(reverse("investor_panel"), data={"asset": self.asset.code})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["total_available_tokens"], 80)
+        self.assertContains(response, 'data-available-tokens="80"')
+        self.assertContains(response, "Máximo disponible ahora: 80 tokens AGT en activos abiertos.")
+
     def test_investor_panel_summary_participation_is_expressed_as_percentage(self):
         self.client.login(username="paneluser", password="ClaveSegura123*")
         buy_tokens(self.user, self.tokenized_asset, 26)
@@ -308,9 +380,21 @@ class InvestorPanelTests(TestCase):
         response = self.client.get(reverse("investor_panel"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["summary_participation_pct"], Decimal("26.00"))
+        self.assertEqual(response.context["summary_participation_pct"], Decimal("0.00"))
 
-    def test_investor_panel_purchase_exposes_certificate_pdf_url(self):
+    def test_investor_panel_hides_btc_recharge_contract_traceability(self):
+        self.client.login(username="paneluser", password="ClaveSegura123*")
+        contract_result = buy_tokens(self.user, self.tokenized_asset, 6)
+
+        response = self.client.get(reverse("investor_panel"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.context["selected_contract"])
+        self.assertEqual(len(response.context["recent_contracts"]), 0)
+        self.assertNotContains(response, contract_result.digital_contract.contract_id)
+        self.assertContains(response, "Pendiente de inversión")
+
+    def test_investor_panel_btc_recharge_does_not_expose_certificate_pdf_url(self):
         self.client.login(username="paneluser", password="ClaveSegura123*")
 
         response = self.client.post(
@@ -318,9 +402,11 @@ class InvestorPanelTests(TestCase):
             data={"btc_amount": "0.05000", "panel_action": "buy"},
         )
 
+        self.assertEqual(response.status_code, 302)
+        response = self.client.get(response.headers["Location"])
         self.assertEqual(response.status_code, 200)
-        contract = DigitalContract.objects.get(user=self.user, tokenized_asset=self.tokenized_asset)
-        self.assertContains(response, reverse("download_digital_certificate", args=[contract.certificate_id]))
+        self.assertFalse(DigitalContract.objects.filter(user=self.user).exists())
+        self.assertContains(response, "Aún no has emitido certificados digitales de participación.")
 
     def test_download_digital_certificate_returns_pdf_for_owner(self):
         contract_result = buy_tokens(self.user, self.tokenized_asset, 5)

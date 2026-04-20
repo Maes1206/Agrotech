@@ -238,10 +238,11 @@ function updateRoundFundingProgress(current, target, units) {
 
 (function () {
     var tabsRoot = document.getElementById('agro-auth-tabs');
-    if (!tabsRoot) return;
-
-    var tabs = tabsRoot.querySelectorAll('[data-auth-target]');
+    var tabs = tabsRoot ? tabsRoot.querySelectorAll('[data-auth-target]') : [];
     var panels = document.querySelectorAll('[data-auth-panel]');
+    var switchButtons = document.querySelectorAll('.agro-access__switch[data-auth-target]');
+
+    if (!panels.length) return;
 
     function activate(mode) {
         tabs.forEach(function (tab) {
@@ -258,7 +259,7 @@ function updateRoundFundingProgress(current, target, units) {
         });
     }
 
-    var initialMode = tabsRoot.getAttribute('data-active-mode') || 'login';
+    var initialMode = tabsRoot ? tabsRoot.getAttribute('data-active-mode') || 'login' : 'login';
     activate(initialMode);
 
     tabs.forEach(function (tab) {
@@ -280,10 +281,9 @@ function updateRoundFundingProgress(current, target, units) {
         });
     });
 
-    document.querySelectorAll('.agro-access__switch[data-auth-target]').forEach(function (button) {
+    switchButtons.forEach(function (button) {
         button.addEventListener('click', function () {
             activate(button.getAttribute('data-auth-target'));
         });
     });
 })();
-

@@ -776,14 +776,16 @@ body {
 
 .pocket-content {
     position: absolute;
-    top: 45px;
-    width: 100%;
+    top: 34px;
+    left: 50%;
+    width: calc(100% - 40px);
     text-align: center;
     z-index: 50;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
+    transform: translateX(-50%);
 }
 
 .balance-stars {
@@ -793,21 +795,66 @@ body {
     transition: 0.3s;
 }
 
+.wallet-balance-slot {
+    position: relative;
+    min-height: 66px;
+    width: min(100%, 196px);
+}
+
 .balance-real {
-    color: #a7c59e;
-    font-size: 22px;
-    font-weight: 600;
     opacity: 0;
     position: absolute;
     top: 0;
     left: 50%;
     transform: translate(-50%, 10px);
     transition: 0.3s;
-    white-space: nowrap;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    width: 100%;
+    max-width: 100%;
+    white-space: normal;
+}
+
+.balance-real__primary {
+    display: block;
+    width: 100%;
+    color: #a7c59e;
+    font-size: 17px;
+    line-height: 1.08;
+    font-weight: 700;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+
+.balance-real__secondary {
+    display: block;
+    width: 100%;
+    color: #7f9a76;
+    font-size: 11px;
+    line-height: 1.25;
+    font-weight: 500;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+
+.wallet-balance-label {
+    color: #698263;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.wallet-balance-tokens {
+    color: #a7c59e;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    line-height: 1.1;
 }
 
 .eye-icon-wrapper {
-    margin-top: 8px;
+    margin-top: 42px;
     height: 20px;
     width: 20px;
     position: relative;
@@ -1908,6 +1955,60 @@ body {
     line-height: 1.7;
 }
 
+.checkout-saved-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    margin: -4px 0 18px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #eef4f0 0%, #dfe9e2 100%);
+    border: 1px solid #d6e3d9;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.65);
+}
+
+.checkout-saved-card__brand,
+.checkout-saved-card__meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.checkout-saved-card__bank {
+    color: #173021;
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+.checkout-saved-card__brand small {
+    color: #647167;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.checkout-saved-card__meta {
+    align-items: flex-end;
+}
+
+.checkout-saved-card__meta strong {
+    color: #173021;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.1;
+    text-align: right;
+}
+
+.checkout-saved-card__meta span {
+    color: #4b5a51;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: .16em;
+}
+
 .checkout-fields {
     display: grid;
     gap: 16px;
@@ -2336,8 +2437,25 @@ body {
         font-size: 18px;
     }
 
+    .wallet-balance-slot {
+        min-height: 58px;
+        width: min(100%, 168px);
+    }
+
     .balance-real {
-        font-size: 17px;
+        gap: 4px;
+    }
+
+    .balance-real__primary {
+        font-size: 14px;
+    }
+
+    .balance-real__secondary {
+        font-size: 10px;
+    }
+
+    .wallet-balance-tokens {
+        font-size: 10px;
     }
 
     .wallet::after {

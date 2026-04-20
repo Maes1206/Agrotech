@@ -28,7 +28,7 @@ from .models import (
     TokenizedAsset,
     User,
 )
-from .services import buy_tokens, ensure_wallet, invest_with_agt_wallet
+from .services import buy_tokens, ensure_wallet, invest_with_agt_wallet, top_up_wallet
 
 
 LINKED_CARD_SESSION_KEY = "agrotech_linked_card"
@@ -75,22 +75,33 @@ DEMO_TOKEN_STATE_OVERRIDES = {
     },
 }
 
+TOKEN_FACE_VALUE_COP = Decimal("100000")
+
+
+def _build_token_market_metrics(total_tokens=0, tokens_sold=0):
+    safe_total_tokens = max(int(total_tokens or 0), 0)
+    safe_tokens_sold = max(0, min(safe_total_tokens, int(tokens_sold or 0)))
+    tokens_available = max(safe_total_tokens - safe_tokens_sold, 0)
+
+    return {
+        "total_tokens": safe_total_tokens,
+        "tokens_sold": safe_tokens_sold,
+        "tokens_available": tokens_available,
+        "token_face_value_cop": TOKEN_FACE_VALUE_COP,
+        "capital_available": Decimal(tokens_available) * TOKEN_FACE_VALUE_COP,
+        "capital_raised": Decimal(safe_tokens_sold) * TOKEN_FACE_VALUE_COP,
+    }
+
 
 def _get_effective_token_state(tokenized_asset):
     total_tokens = tokenized_asset.total_tokens or 0
-    tokens_available = tokenized_asset.tokens_available or 0
     tokens_sold = tokenized_asset.tokens_sold
     overrides = DEMO_TOKEN_STATE_OVERRIDES.get(tokenized_asset.asset.code, {})
 
     if "tokens_sold" in overrides:
-        tokens_sold = max(0, min(total_tokens, int(overrides["tokens_sold"])))
-        tokens_available = max(total_tokens - tokens_sold, 0)
+        tokens_sold = overrides["tokens_sold"]
 
-    return {
-        "total_tokens": total_tokens,
-        "tokens_sold": tokens_sold,
-        "tokens_available": tokens_available,
-    }
+    return _build_token_market_metrics(total_tokens=total_tokens, tokens_sold=tokens_sold)
 
 
 def _asset_map_context(asset):
@@ -313,6 +324,27 @@ def _build_wallet_snapshot(user, portfolio=None, transactions=None):
     }
 
 
+def _investment_transactions_queryset(user):
+    return (
+        TokenTransaction.objects.select_related("tokenized_asset__asset")
+        .filter(user=user, transaction_type=TokenTransaction.WALLET_BUY)
+        .order_by("-created_at")
+    )
+
+
+def _investment_holdings_queryset(user):
+    return (
+        TokenHolding.objects.select_related("tokenized_asset__asset")
+        .filter(
+            user=user,
+            tokenized_asset__transactions__user=user,
+            tokenized_asset__transactions__transaction_type=TokenTransaction.WALLET_BUY,
+        )
+        .distinct()
+        .order_by("-updated_at")
+    )
+
+
 def _build_asset_snapshot(tokenized_asset, user=None, holding_quantity=None, total_invested=None):
     asset = tokenized_asset.asset
     token_state = _get_effective_token_state(tokenized_asset)
@@ -320,8 +352,8 @@ def _build_asset_snapshot(tokenized_asset, user=None, holding_quantity=None, tot
     tokens_sold = token_state["tokens_sold"]
     tokens_available = token_state["tokens_available"]
     progress_percent = int((tokens_sold / total_tokens) * 100) if total_tokens else 0
-    capital_raised = Decimal(tokens_sold) * tokenized_asset.token_price
-    capital_remaining = Decimal(tokens_available) * tokenized_asset.token_price
+    capital_raised = token_state["capital_raised"]
+    capital_available = token_state["capital_available"]
     urgency_label, urgency_tone = _resolve_investment_badge(tokenized_asset)
     participants_estimate = _estimate_participants(tokenized_asset)
     holding_quantity = holding_quantity or 0
@@ -341,11 +373,14 @@ def _build_asset_snapshot(tokenized_asset, user=None, holding_quantity=None, tot
         "progress_percent": progress_percent,
         "funding_percent": progress_percent,
         "capital_raised": capital_raised,
-        "capital_remaining": capital_remaining,
+        "capital_available": capital_available,
+        "capital_remaining": capital_available,
         "participants_estimate": participants_estimate,
         "urgency_label": urgency_label,
         "urgency_tone": urgency_tone,
-        "available_investment_total": capital_remaining,
+        "available_investment_total": capital_available,
+        "token_face_value_cop": token_state["token_face_value_cop"],
+        "token_price_cop": tokenized_asset.token_price,
         "holding_quantity": holding_quantity,
         "total_invested": total_invested,
         "is_validated": holding_quantity > 0,
@@ -390,7 +425,8 @@ def _serialize_asset_snapshot(snapshot):
         "total_tokens": snapshot["total_tokens"],
         "progress_percent": snapshot["progress_percent"],
         "capital_raised": f"{snapshot['capital_raised']:.0f}",
-        "capital_remaining": f"{snapshot['capital_remaining']:.0f}",
+        "capital_available": f"{snapshot['capital_available']:.0f}",
+        "capital_remaining": f"{snapshot['capital_available']:.0f}",
         "participants_estimate": snapshot["participants_estimate"],
         "urgency_label": snapshot["urgency_label"],
         "urgency_tone": snapshot["urgency_tone"],
@@ -465,7 +501,7 @@ def _build_ledger_entry(transaction, user):
 def _build_ledger_context(user):
     transactions = list(
         TokenTransaction.objects.select_related("tokenized_asset__asset")
-        .filter(user=user)
+        .filter(user=user, transaction_type=TokenTransaction.WALLET_BUY)
         .order_by("-created_at")[:12]
     )
     ledger_seed_entries = [
@@ -729,16 +765,8 @@ def invest_asset_tokens(request, code):
             status=400,
         )
 
-    portfolio = (
-        TokenHolding.objects.select_related("tokenized_asset__asset")
-        .filter(user=request.user)
-        .order_by("-updated_at")
-    )
-    transactions = (
-        TokenTransaction.objects.select_related("tokenized_asset__asset")
-        .filter(user=request.user)
-        .order_by("-created_at")
-    )
+    portfolio = _investment_holdings_queryset(request.user)
+    transactions = _investment_transactions_queryset(request.user)
     wallet_snapshot = _build_wallet_snapshot(request.user, portfolio=portfolio, transactions=transactions)
     asset_snapshot = _build_asset_snapshot(
         tokenized_asset,
@@ -780,6 +808,14 @@ def investor_panel(request):
         .filter(asset__status=BiologicalAsset.AVAILABLE)
         .order_by("asset__display_order", "asset__name")
     )
+    total_available_tokens = sum(
+        _get_effective_token_state(asset)["tokens_available"]
+        for asset in available_assets
+    )
+    total_available_capital = sum(
+        _get_effective_token_state(asset)["capital_available"]
+        for asset in available_assets
+    )
     selected_asset_code = (
         request.POST.get("selected_asset_code")
         or request.GET.get("asset")
@@ -788,7 +824,7 @@ def investor_panel(request):
     selected_asset = next(
         (asset for asset in available_assets if asset.asset.code == selected_asset_code),
         None,
-    ) or (available_assets[0] if available_assets else None)
+    ) or next((asset for asset in available_assets if asset.tokens_available > 0), None) or (available_assets[0] if available_assets else None)
 
     if not selected_asset:
         return render(
@@ -815,45 +851,29 @@ def investor_panel(request):
             if panel_action == "buy":
                 if calculation["estimated_tokens"] < 1:
                     panel_form.add_error("btc_amount", "El monto ingresado no alcanza para comprar 1 token AGT.")
-                elif calculation["estimated_tokens"] > selected_asset.tokens_available:
+                elif calculation["estimated_tokens"] > total_available_tokens:
                     panel_form.add_error(
                         "btc_amount",
-                        f"Solo hay {selected_asset.tokens_available} tokens disponibles en este activo.",
+                        f"Solo hay {total_available_tokens} tokens AGT disponibles en los activos abiertos.",
                     )
                 else:
-                    buy_result = buy_tokens(request.user, selected_asset, calculation["estimated_tokens"])
-                    if buy_result.success:
+                    top_up_result = top_up_wallet(request.user, calculation["estimated_tokens"])
+                    if top_up_result.success:
                         _store_linked_card(
                             request,
                             holder_name=request.POST.get("linked_card_holder", ""),
                             last4=request.POST.get("linked_card_last4", ""),
                         )
-                        selected_asset.refresh_from_db()
-                        calculation = _build_investor_quote(panel_form.cleaned_data["btc_amount"], selected_asset)
-                        purchase_result = {
-                            "quantity": buy_result.holding.quantity if buy_result.holding else calculation["estimated_tokens"],
-                            "last_purchase_quantity": buy_result.transaction.quantity if buy_result.transaction else calculation["estimated_tokens"],
-                            "total_cost": buy_result.total_cost,
-                            "tokens_available": buy_result.tokens_available,
-                            "participation": buy_result.participation,
-                        }
-                        messages.success(request, "Compra registrada correctamente en tu portafolio.")
+                        messages.success(request, "Recarga AGT registrada correctamente en tu wallet.")
+                        return redirect(f"{reverse('investor_panel')}?asset={selected_asset.asset.code}")
                     else:
-                        panel_form.add_error("btc_amount", buy_result.message)
+                        panel_form.add_error("btc_amount", top_up_result.message)
     else:
         panel_form = InvestorPanelForm(initial=default_initial)
         calculation = _build_investor_quote(default_initial["btc_amount"], selected_asset)
 
-    portfolio = (
-        TokenHolding.objects.select_related("tokenized_asset__asset")
-        .filter(user=request.user)
-        .order_by("-updated_at")
-    )
-    transactions = (
-        TokenTransaction.objects.select_related("tokenized_asset__asset")
-        .filter(user=request.user)
-        .order_by("-created_at")[:8]
-    )
+    portfolio = _investment_holdings_queryset(request.user)
+    transactions = _investment_transactions_queryset(request.user)[:8]
     latest_transaction = transactions.first()
     summary_asset = latest_transaction.tokenized_asset if latest_transaction else None
     summary_holding = None
@@ -862,7 +882,11 @@ def investor_panel(request):
     if summary_asset:
         summary_holding = portfolio.filter(tokenized_asset=summary_asset).first()
         summary_total_invested = (
-            TokenTransaction.objects.filter(user=request.user, tokenized_asset=summary_asset)
+            TokenTransaction.objects.filter(
+                user=request.user,
+                tokenized_asset=summary_asset,
+                transaction_type=TokenTransaction.WALLET_BUY,
+            )
             .aggregate(total=Sum("total_amount"))
             .get("total")
             or Decimal("0.00")
@@ -874,7 +898,11 @@ def investor_panel(request):
     )
     selected_asset_holding = portfolio.filter(tokenized_asset=selected_asset).first()
     selected_asset_total_invested = (
-        TokenTransaction.objects.filter(user=request.user, tokenized_asset=selected_asset)
+        TokenTransaction.objects.filter(
+            user=request.user,
+            tokenized_asset=selected_asset,
+            transaction_type=TokenTransaction.WALLET_BUY,
+        )
         .aggregate(total=Sum("total_amount"))
         .get("total")
         or Decimal("0.00")
@@ -886,7 +914,7 @@ def investor_panel(request):
     invested_totals_by_asset = {
         item["tokenized_asset__asset__code"]: item["total"] or Decimal("0.00")
         for item in (
-            TokenTransaction.objects.filter(user=request.user)
+            TokenTransaction.objects.filter(user=request.user, transaction_type=TokenTransaction.WALLET_BUY)
             .values("tokenized_asset__asset__code")
             .annotate(total=Sum("total_amount"))
         )
@@ -901,12 +929,28 @@ def investor_panel(request):
         opportunity_assets = [selected_asset, *opportunity_assets[:7]]
     wallet_snapshot = _build_wallet_snapshot(request.user, portfolio=portfolio, transactions=transactions)
     portfolio_balance_cop = wallet_snapshot["portfolio_value"]
+    portfolio_balance_btc = Decimal("0.000000")
+    wallet_balance_cop = wallet_snapshot["equivalent_cop"]
+    wallet_balance_btc = Decimal("0.000000")
+    if Decimal(str(settings.AGROTECH_DEMO_BTC_COP or 0)) > 0:
+        portfolio_balance_btc = (
+            portfolio_balance_cop / Decimal(str(settings.AGROTECH_DEMO_BTC_COP))
+        ).quantize(Decimal("0.000001"), rounding=ROUND_DOWN)
+        wallet_balance_btc = (
+            wallet_balance_cop / Decimal(str(settings.AGROTECH_DEMO_BTC_COP))
+        ).quantize(Decimal("0.000001"), rounding=ROUND_DOWN)
     portfolio_tokens = sum(holding.quantity for holding in portfolio)
     holder_name = request.user.get_full_name().strip() or request.user.username.upper()
     linked_card = _get_linked_card(request)
+    wallet_has_balance = wallet_snapshot["tokens_available"] > 0
+    wallet_has_display_card = bool(linked_card) or wallet_has_balance
     selected_contract = (
         DigitalContract.objects.select_related("blockchain_record")
-        .filter(user=request.user, tokenized_asset=selected_asset)
+        .filter(
+            user=request.user,
+            tokenized_asset=selected_asset,
+            transaction__transaction_type=TokenTransaction.WALLET_BUY,
+        )
         .order_by("-issued_at")
         .first()
     )
@@ -919,7 +963,7 @@ def investor_panel(request):
     )
     recent_contracts = (
         DigitalContract.objects.select_related("tokenized_asset__asset", "blockchain_record")
-        .filter(user=request.user)
+        .filter(user=request.user, transaction__transaction_type=TokenTransaction.WALLET_BUY)
         .order_by("-issued_at")[:5]
     )
     context = {
@@ -932,10 +976,17 @@ def investor_panel(request):
         "agrotech_token_price_cop": settings.AGROTECH_TOKEN_PRICE_COP,
         "demo_btc_usd_rate": settings.AGROTECH_DEMO_BTC_USD,
         "demo_btc_cop_rate": settings.AGROTECH_DEMO_BTC_COP,
+        "total_available_tokens": total_available_tokens,
+        "total_available_capital": total_available_capital,
+        "total_available_capital_compact": _format_compact_millions(total_available_capital),
+        "wallet_balance_cop": wallet_balance_cop,
+        "wallet_balance_btc": wallet_balance_btc,
         "portfolio_balance_cop": portfolio_balance_cop,
+        "portfolio_balance_btc": portfolio_balance_btc,
         "portfolio_tokens": portfolio_tokens,
         "holder_name": holder_name,
         "linked_card": linked_card,
+        "wallet_has_display_card": wallet_has_display_card,
         "wallet_snapshot": wallet_snapshot,
         "summary_asset": summary_asset,
         "summary_holding": summary_holding,
