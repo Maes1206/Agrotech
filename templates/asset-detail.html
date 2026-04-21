@@ -10,8 +10,8 @@
 <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
 <link href="{% static 'css/style.css' %}" rel="stylesheet">
 <link href="{% static 'css/responsive.css' %}" rel="stylesheet">
-<link href="{% static 'css/asset-detail.css' %}" rel="stylesheet">
-<link href="{% static 'css/agrotech-investment.css' %}" rel="stylesheet">
+<link href="{% static 'css/asset-detail.css' %}?v=20260420-1" rel="stylesheet">
+<link href="{% static 'css/agrotech-investment.css' %}?v=20260420-1" rel="stylesheet">
 </head>
 <body class="asset-detail-page">
   <div class="asset-detail-shell">
@@ -83,35 +83,39 @@
         <div class="row clearfix">
           <div class="col-lg-6 col-md-12 col-sm-12">
             <div class="asset-detail-media">
-              <img src="{% static asset_image_path %}" alt="{{ asset.name }}">
+              <img src="{% static asset_image_path %}" alt="Imagen referencial de {{ asset.name }}">
+              <div class="asset-detail-media__caption">{{ asset_snapshot.image_caption }}</div>
             </div>
           </div>
           <div class="col-lg-6 col-md-12 col-sm-12">
             <div class="asset-detail-content" data-asset-detail-panel data-asset-code="{{ asset.code }}">
-              <span class="asset-detail-kicker">
-                {% if asset.asset_type == "lot" %}Lote activo{% else %}Animal individual{% endif %}
-              </span>
+              <span class="asset-detail-kicker">Participación digital sobre activo ganadero real</span>
               <h1 class="asset-detail-title">{{ asset.name }}</h1>
               <p class="asset-detail-lead">{{ asset.description|default:"Activo biologico tokenizado para la demo AgroTech, con trazabilidad operativa, seguimiento productivo y valorizacion proyectada." }}</p>
               <div class="asset-detail-pills">
                 <span>{{ asset.code }}</span>
-                <span>{{ asset.category.name }}</span>
+                <span>{{ asset_snapshot.asset_type_label }}</span>
                 <span>{{ asset.farm.name }}</span>
                 <span>{{ asset.producer.name }}</span>
-                <span data-detail-status-label>Estado: {{ asset.get_status_display }}</span>
+                <span data-detail-status-label>Estado del activo: {{ asset_snapshot.lifecycle_status_label }}</span>
+                <span data-detail-round-status-pill>Ronda: {{ asset_snapshot.round_status_label }}</span>
               </div>
 
               <div class="agt-detail-funding">
+                <div class="agt-detail-funding__eyebrow">Tokenización y financiación</div>
                 <div class="agt-detail-funding__head">
-                  <span>Financiación del activo</span>
+                  <div class="agt-detail-funding__title-group">
+                    <span>Porcentaje financiado</span>
+                    <small data-detail-round-status>{{ asset_snapshot.round_status_label }}</small>
+                  </div>
                   <strong data-detail-progress-value>{{ asset_snapshot.progress_percent }}%</strong>
                 </div>
                 <div class="agt-detail-funding__bar">
                   <span data-detail-progress-bar style="width: {{ asset_snapshot.progress_percent }}%;"></span>
                 </div>
                 <div class="agt-detail-funding__meta">
-                  <span data-detail-progress-copy>{{ asset_snapshot.tokens_sold }} / {{ asset_snapshot.total_tokens }} tokens vendidos</span>
-                  <span data-detail-availability-copy>{{ asset_snapshot.tokens_available }} tokens restantes</span>
+                  <span data-detail-progress-copy>{{ asset_snapshot.tokens_sold }} / {{ asset_snapshot.total_tokens }} tokens colocados</span>
+                  <span data-detail-availability-copy>{{ asset_snapshot.tokens_available }} tokens disponibles para inversión</span>
                 </div>
                 <div class="agt-card-stats agt-card-stats--detail">
                   <div>
@@ -119,11 +123,11 @@
                     <strong data-detail-capital-raised>${{ asset_snapshot.capital_raised|floatformat:0|intcomma }}</strong>
                   </div>
                   <div>
-                    <span>Capital restante</span>
-                    <strong data-detail-capital-remaining>${{ asset_snapshot.capital_available|floatformat:0|intcomma }} COP</strong>
+                    <span>Valor por token</span>
+                    <strong>${{ asset_snapshot.token_price_cop|floatformat:0|intcomma }} COP</strong>
                   </div>
                   <div>
-                    <span>Participantes</span>
+                    <span>Inversionistas</span>
                     <strong data-detail-participants>{{ asset_snapshot.participants_estimate }}</strong>
                   </div>
                 </div>
@@ -134,10 +138,11 @@
                 <button
                   type="button"
                   class="theme-btn btn-style-twelve"
+                  {% if asset_snapshot.tokens_available <= 0 %}disabled{% endif %}
                   data-open-investment-modal
                   data-asset-code="{{ asset.code }}"
                   data-asset-name="{{ asset.name }}"
-                  data-asset-type="{% if asset.asset_type == 'lot' %}Lote{% else %}Individual{% endif %}"
+                  data-asset-type="{{ asset_snapshot.asset_type_label }}"
                   data-asset-category="{{ asset.category.name }}"
                   data-asset-producer="{{ asset.producer.name }}"
                   data-asset-farm="{{ asset.farm.name }}"
@@ -151,7 +156,7 @@
                   data-asset-total-invested="{% if user_position %}${{ user_position.total_invested|floatformat:0|intcomma }} COP{% else %}$0 COP{% endif %}"
                   data-asset-start-date="{{ asset.start_date }}"
                   data-asset-sale-date="{{ asset.estimated_sale_date }}"
-                  data-asset-status="{{ asset.get_status_display }}"
+                  data-asset-status="{{ asset_snapshot.lifecycle_status_label }}"
                   data-asset-validated="{% if user_position and user_position.holding_quantity > 0 %}true{% else %}false{% endif %}"
                   data-asset-image="{% static asset_image_path %}"
                   data-total-tokens="{{ asset_snapshot.total_tokens }}"
@@ -165,7 +170,7 @@
                   data-estimated-return="{{ asset.estimated_return_pct|floatformat:2 }}"
                   data-invest-endpoint="{% url 'invest_asset_tokens' asset.code %}"
                 >
-                  <span class="txt">Invertir con tokens AGT</span>
+                  <span class="txt">{% if asset_snapshot.tokens_available > 0 %}Invertir en este lote con AGT{% else %}Ronda cerrada{% endif %}</span>
                 </button>
                 <a href="{% url 'investor_panel' %}?asset={{ asset.code }}" class="theme-btn btn-style-eight"><span class="txt">Ver en panel del inversionista</span></a>
               </div>
@@ -182,46 +187,155 @@
       <div class="row clearfix mt-4">
         <div class="col-lg-7 col-md-12 col-sm-12">
           <div class="asset-detail-metrics">
-            <h4>Indicadores del activo</h4>
-            <div class="asset-detail-grid">
-              <div>
-                <span>Peso inicial</span>
-                <strong>{{ asset.initial_weight }} kg</strong>
+            <h4>Resumen del activo y su estructura de inversión</h4>
+
+            <section class="asset-detail-section">
+              <div class="asset-detail-section__head">
+                <span class="asset-detail-section__badge">A</span>
+                <div>
+                  <h5>Datos del activo real</h5>
+                  <p>{{ asset_snapshot.physical_note }}</p>
+                </div>
               </div>
-              <div>
-                <span>Peso actual</span>
-                <strong>{{ asset.current_weight }} kg</strong>
+              <div class="asset-detail-grid">
+                <div>
+                  <span>Tipo de activo</span>
+                  <strong>{{ asset_snapshot.asset_type_label }}</strong>
+                </div>
+                <div>
+                  <span>{{ asset_snapshot.weight_initial_label }}</span>
+                  <strong>{{ asset.initial_weight }} kg</strong>
+                </div>
+                <div>
+                  <span>{{ asset_snapshot.weight_current_label }}</span>
+                  <strong>{{ asset.current_weight }} kg</strong>
+                </div>
+                <div>
+                  <span>{{ asset_snapshot.value_initial_label }}</span>
+                  <strong>${{ asset.initial_value|floatformat:0|intcomma }} COP</strong>
+                </div>
+                <div>
+                  <span>{{ asset_snapshot.value_projected_label }}</span>
+                  <strong>${{ asset.projected_value|floatformat:0|intcomma }} COP</strong>
+                </div>
+                <div>
+                  <span>Activo físico</span>
+                  <strong>{{ asset.category.name }}</strong>
+                </div>
               </div>
-              <div>
-                <span>Valor inicial</span>
-                <strong>${{ asset.initial_value|floatformat:0|intcomma }}</strong>
+            </section>
+
+            <section class="asset-detail-section">
+              <div class="asset-detail-section__head">
+                <span class="asset-detail-section__badge">B</span>
+                <div>
+                  <h5>Datos de tokenización</h5>
+                  <p>Estas cifras describen la representación digital del lote y el avance de su ronda de financiación.</p>
+                </div>
               </div>
-              <div>
-                <span>Valor proyectado</span>
-                <strong>${{ asset.projected_value|floatformat:0|intcomma }}</strong>
+              <div class="asset-detail-grid">
+                <div>
+                  <span>Tokens emitidos</span>
+                  <strong data-detail-token-issued>{{ asset_snapshot.total_tokens }}</strong>
+                </div>
+                <div>
+                  <span>Tokens vendidos</span>
+                  <strong data-detail-token-sold>{{ asset_snapshot.tokens_sold }}</strong>
+                </div>
+                <div>
+                  <span>Tokens disponibles</span>
+                  <strong data-detail-token-available>{{ asset_snapshot.tokens_available }}</strong>
+                </div>
+                <div>
+                  <span>Valor por token</span>
+                  <strong>${{ asset_snapshot.token_price_cop|floatformat:0|intcomma }} COP</strong>
+                </div>
+                <div>
+                  <span>Porcentaje financiado</span>
+                  <strong data-detail-funding-percent>{{ asset_snapshot.progress_percent }}%</strong>
+                </div>
+                <div>
+                  <span>Estado de la ronda</span>
+                  <strong data-detail-round-status-strong>{{ asset_snapshot.round_status_label }}</strong>
+                </div>
               </div>
-              <div>
-                <span>Rentabilidad estimada</span>
-                <strong>{{ asset.estimated_return_pct|floatformat:2 }}%</strong>
+            </section>
+
+            <section class="asset-detail-section">
+              <div class="asset-detail-section__head">
+                <span class="asset-detail-section__badge">C</span>
+                <div>
+                  <h5>Datos de inversión</h5>
+                  <p>Información económica para inversionistas, separada del activo físico y de la capa de tokenización.</p>
+                </div>
               </div>
-              <div>
-                <span>Unidades disponibles</span>
-                <strong data-detail-asset-units>{{ asset_snapshot.tokens_available }} / {{ asset_snapshot.total_tokens }}</strong>
+              <div class="asset-detail-grid">
+                <div>
+                  <span>Capital levantado</span>
+                  <strong data-detail-capital-raised-grid>${{ asset_snapshot.capital_raised|floatformat:0|intcomma }} COP</strong>
+                </div>
+                <div>
+                  <span>Capital pendiente por financiar</span>
+                  <strong data-detail-capital-pending>${{ asset_snapshot.capital_available|floatformat:0|intcomma }} COP</strong>
+                </div>
+                <div>
+                  <span>Inversionistas con posición</span>
+                  <strong data-detail-participants-grid>{{ asset_snapshot.participants_estimate }}</strong>
+                </div>
+                <div>
+                  <span>Rentabilidad estimada del lote</span>
+                  <strong>{{ asset.estimated_return_pct|floatformat:2 }}%</strong>
+                </div>
+                <div>
+                  <span>Liquidación estimada</span>
+                  <strong>{{ asset.estimated_sale_date }}</strong>
+                </div>
+                <div>
+                  <span>Estado del activo</span>
+                  <strong data-detail-lifecycle-strong>{{ asset_snapshot.lifecycle_status_label }}</strong>
+                </div>
               </div>
-            </div>
+            </section>
           </div>
         </div>
         <div class="col-lg-5 col-md-12 col-sm-12">
-          <div class="asset-detail-side">
-            <h4>Ficha operativa</h4>
-            <ul class="asset-detail-list">
-              <li><span>Inicio del ciclo</span><strong>{{ asset.start_date }}</strong></li>
-              <li><span>Venta estimada</span><strong>{{ asset.estimated_sale_date }}</strong></li>
-              <li><span>Productor</span><strong>{{ asset.producer.name }}</strong></li>
-              <li><span>Finca</span><strong>{{ asset.farm.name }}</strong></li>
-              <li><span>Ubicación</span><strong>{{ asset.farm.municipality }}, {{ asset.farm.department }}</strong></li>
-              <li><span>Categoría</span><strong>{{ asset.category.name }}</strong></li>
-            </ul>
+          <div class="asset-detail-side-stack">
+            <div class="asset-detail-side">
+              <h4>Ficha operativa</h4>
+              <ul class="asset-detail-list">
+                <li><span>Inicio del ciclo</span><strong>{{ asset.start_date }}</strong></li>
+                <li><span>Venta estimada</span><strong>{{ asset.estimated_sale_date }}</strong></li>
+                <li><span>Productor</span><strong>{{ asset.producer.name }}</strong></li>
+                <li><span>Finca</span><strong>{{ asset.farm.name }}</strong></li>
+                <li><span>Ubicación</span><strong>{{ asset.farm.municipality }}, {{ asset.farm.department }}</strong></li>
+                <li><span>Categoría</span><strong>{{ asset.category.name }}</strong></li>
+                <li><span>Estado de financiación</span><strong data-detail-side-round-status>{{ asset_snapshot.round_status_label }}</strong></li>
+                <li><span>Estado del activo</span><strong data-detail-side-lifecycle-status>{{ asset_snapshot.lifecycle_status_label }}</strong></li>
+              </ul>
+              {% if asset.asset_type == "lot" %}
+              <p class="asset-detail-side__note">La imagen del encabezado es referencial. En esta demo el lote se presenta como un activo físico agrupado y su participación económica se distribuye mediante tokens.</p>
+              {% endif %}
+            </div>
+
+            <div class="asset-detail-side asset-detail-side--breed">
+              <span class="asset-detail-side__eyebrow">{{ breed_profile.eyebrow }}</span>
+              <h4>Datos de la raza</h4>
+              <div class="asset-detail-breed">
+                <div class="asset-detail-breed__hero">
+                  <strong>{{ breed_profile.name }}</strong>
+                  <p>{{ breed_profile.summary }}</p>
+                </div>
+                <div class="asset-detail-breed__grid">
+                  {% for label, value in breed_profile.traits %}
+                  <div>
+                    <span>{{ label }}</span>
+                    <strong>{{ value }}</strong>
+                  </div>
+                  {% endfor %}
+                </div>
+                <p class="asset-detail-breed__note">{{ breed_profile.note }}</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -400,7 +514,7 @@
               <img src="{% static item.image_path %}" alt="{{ item.asset.name }}">
               <div class="asset-detail-related-card-body">
                 <h5>{{ item.asset.name }}</h5>
-                <p>{{ item.asset.available_units }} unidades disponibles · {{ item.asset.estimated_return_pct|floatformat:1 }}% estimado</p>
+                <p>{{ item.asset.tokenization.tokens_available }} tokens disponibles · {{ item.asset.estimated_return_pct|floatformat:1 }}% estimado</p>
                 <a href="{% url 'asset_detail' item.asset.code %}">Ver detalle</a>
               </div>
             </div>
@@ -514,7 +628,7 @@
   {% endif %}
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="{% static 'js/agrotech-investment.js' %}"></script>
+  <script src="{% static 'js/agrotech-investment.js' %}?v=20260420-1"></script>
   <script src="{% static 'js/agrotech-asset-map.js' %}"></script>
 </body>
 </html>

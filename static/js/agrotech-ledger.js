@@ -238,12 +238,12 @@
       return (
         '<article class="agt-ledger-feed__item' + (entry.isNew ? " is-new" : "") + '">' +
           '<div class="agt-ledger-feed__line">' +
-            '<strong>' + entry.timeLabel + "</strong> — " + entry.operationType + " — " + entry.asset +
-            " — " + Number(entry.btcAmount).toFixed(6) + " BTC — " + entry.agtAmount + " AGT" +
+            '<strong>' + entry.timeLabel + "</strong> — " + entry.operationType + '<br><span>' + entry.asset +
+            " · " + Number(entry.btcAmount).toFixed(6) + " BTC · " + entry.agtAmount + " AGT</span>" +
           "</div>" +
           '<div class="agt-ledger-feed__meta">' +
             '<span class="' + statusClass(entry.status) + '">' + entry.statusLabel + "</span>" +
-            '<span class="agt-ledger-feed__hash">' + entry.hash + "</span>" +
+            '<span class="agt-ledger-feed__hash"><span class="agt-ledger-feed__hash-label">Hash</span>' + entry.hash + "</span>" +
           "</div>" +
         "</article>"
       );
@@ -252,16 +252,16 @@
     function rowMarkup(entry) {
       return (
         '<tr class="agt-ledger-row' + (entry.isNew ? " is-new" : "") + '">' +
-          '<td><div class="agt-ledger-row__block"><strong>' + entry.block + '</strong><span class="agt-ledger-row__label">Prev: ' + entry.prevHash + "</span></div></td>" +
-          "<td>" + entry.timestamp + "</td>" +
-          "<td>" + entry.operationType + "</td>" +
-          "<td><strong>" + entry.asset + '</strong><div class="agt-ledger-row__label">' + entry.assetCode + "</div></td>" +
-          "<td>" + entry.walletOrigin + "</td>" +
-          "<td>" + entry.walletDestination + "</td>" +
-          "<td>" + Number(entry.btcAmount).toFixed(6) + " BTC</td>" +
-          "<td>" + entry.agtAmount + " AGT</td>" +
-          '<td><div class="agt-ledger-row__hash"><strong>' + entry.hash + '</strong><button type="button" class="agt-ledger-copy" data-copy-hash="' + entry.hash + '">Copiar hash</button></div></td>' +
-          '<td><span class="' + statusClass(entry.status) + '">' + entry.statusLabel + "</span></td>" +
+          '<td data-label="Bloque"><div class="agt-ledger-row__block"><strong>' + entry.block + '</strong><span class="agt-ledger-row__label">Prev: ' + entry.prevHash + "</span></div></td>" +
+          '<td data-label="Timestamp">' + entry.timestamp + "</td>" +
+          '<td data-label="Operación">' + entry.operationType + "</td>" +
+          '<td data-label="Activo"><strong>' + entry.asset + '</strong><div class="agt-ledger-row__label">' + entry.assetCode + "</div></td>" +
+          '<td data-label="Wallet origen">' + entry.walletOrigin + "</td>" +
+          '<td data-label="Wallet destino">' + entry.walletDestination + "</td>" +
+          '<td data-label="BTC">' + Number(entry.btcAmount).toFixed(6) + " BTC</td>" +
+          '<td data-label="AGT">' + entry.agtAmount + " AGT</td>" +
+          '<td data-label="Hash"><div class="agt-ledger-row__hash"><strong>' + entry.hash + '</strong><button type="button" class="agt-ledger-copy" data-copy-hash="' + entry.hash + '">Copiar hash</button></div></td>' +
+          '<td data-label="Estado"><span class="' + statusClass(entry.status) + '">' + entry.statusLabel + "</span></td>" +
         "</tr>"
       );
     }

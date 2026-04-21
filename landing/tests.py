@@ -17,7 +17,7 @@ from .models import (
     Wallet,
 )
 from .services import buy_tokens
-from .views import _build_token_market_metrics
+from .views import _build_asset_snapshot, _build_token_market_metrics
 
 
 class BuyTokensServiceTests(TestCase):
@@ -244,11 +244,25 @@ class InvestorPanelTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["calculation"]["estimated_tokens"], 26)
 
-    def test_token_market_metrics_apply_fixed_face_value_to_mock_data(self):
-        metrics = _build_token_market_metrics(total_tokens=40, tokens_sold=32)
+    def test_token_market_metrics_use_asset_token_price(self):
+        metrics = _build_token_market_metrics(
+            total_tokens=40,
+            tokens_sold=32,
+            token_price_cop=Decimal("15000"),
+        )
 
         self.assertEqual(metrics["tokens_available"], 8)
-        self.assertEqual(metrics["capital_available"], Decimal("800000"))
+        self.assertEqual(metrics["capital_available"], Decimal("120000"))
+        self.assertEqual(metrics["capital_raised"], Decimal("480000"))
+
+    def test_asset_snapshot_closes_round_when_no_tokens_are_available(self):
+        self.tokenized_asset.tokens_available = 0
+        self.tokenized_asset.save(update_fields=["tokens_available"])
+
+        snapshot = _build_asset_snapshot(self.tokenized_asset)
+
+        self.assertEqual(snapshot["round_status_label"], "Ronda cerrada")
+        self.assertEqual(snapshot["lifecycle_status_label"], "Financiado")
 
     def test_investor_panel_renders_dynamic_available_capital_in_cards(self):
         self.client.login(username="paneluser", password="ClaveSegura123*")

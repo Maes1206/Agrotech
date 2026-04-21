@@ -69,6 +69,81 @@ ASSET_MAP_LOCATIONS = {
     },
 }
 
+ASSET_BREED_PROFILES = {
+    "LOT-001": {
+        "name": "Brahman",
+        "eyebrow": "Raza predominante del lote",
+        "summary": "Raza cebuina ampliamente utilizada en sistemas de carne por su rusticidad, adaptación al trópico y buen desempeño en programas de ceba.",
+        "traits": [
+            ("Aptitud", "Producción de carne"),
+            ("Adaptación climática", "Alta tolerancia a calor y humedad"),
+            ("Fortaleza productiva", "Buen desempeño en engorde tropical"),
+            ("Manejo recomendado", "Seguimiento nutricional y sanitario quincenal"),
+        ],
+        "note": "Información referencial de la raza predominante del lote, útil para contextualizar el comportamiento productivo esperado.",
+    },
+    "IND-001": {
+        "name": "Brangus comercial",
+        "eyebrow": "Perfil racial referencial",
+        "summary": "Cruce orientado a carne que combina adaptación al trópico con buena respuesta en ganancia de peso y conversión alimenticia.",
+        "traits": [
+            ("Aptitud", "Carne"),
+            ("Adaptación climática", "Alta"),
+            ("Fortaleza productiva", "Ganancia de peso estable en ceba"),
+            ("Manejo recomendado", "Monitoreo individual de condición corporal"),
+        ],
+        "note": "Perfil referencial usado en demo para explicar el soporte zootécnico del activo individual.",
+    },
+    "LOT-002": {
+        "name": "Brahman x comercial",
+        "eyebrow": "Base racial del lote",
+        "summary": "Composición típica de ceba premium orientada a uniformidad de lote, resistencia en clima cálido y valorización por desempeño productivo.",
+        "traits": [
+            ("Aptitud", "Carne"),
+            ("Adaptación climática", "Alta en trópico medio y cálido"),
+            ("Fortaleza productiva", "Uniformidad para cierre comercial del lote"),
+            ("Manejo recomendado", "Control de peso y suplementación estratégica"),
+        ],
+        "note": "La ficha resume la base racial de referencia del lote y no reemplaza una caracterización zootécnica individual por animal.",
+    },
+    "IND-002": {
+        "name": "Gyr x cebú comercial",
+        "eyebrow": "Perfil racial referencial",
+        "summary": "Línea adaptada a ambientes cálidos, valorada por rusticidad, movilidad en pastoreo y estabilidad en procesos de levante.",
+        "traits": [
+            ("Aptitud", "Doble propósito con foco productivo"),
+            ("Adaptación climática", "Alta"),
+            ("Fortaleza productiva", "Rusticidad y eficiencia en campo"),
+            ("Manejo recomendado", "Monitoreo de crecimiento y sanidad preventiva"),
+        ],
+        "note": "Ficha descriptiva de referencia para el activo individual dentro de la demo académica.",
+    },
+    "LOT-003": {
+        "name": "Cebú tropical sostenible",
+        "eyebrow": "Raza predominante del lote",
+        "summary": "Perfil racial alineado con sistemas silvopastoriles y manejo sostenible, priorizando adaptación, resistencia y desempeño en ganadería tropical.",
+        "traits": [
+            ("Aptitud", "Carne"),
+            ("Adaptación climática", "Alta en clima cálido"),
+            ("Fortaleza productiva", "Buen comportamiento en sistemas sostenibles"),
+            ("Manejo recomendado", "Rotación de potreros y control sanitario"),
+        ],
+        "note": "Información referencial de la raza o composición racial predominante asociada al enfoque sostenible del lote.",
+    },
+    "IND-003": {
+        "name": "Brahman joven",
+        "eyebrow": "Perfil racial referencial",
+        "summary": "Animal de base cebuina con buena presencia comercial, tolerancia ambiental y potencial de valorización en ciclos de crecimiento controlado.",
+        "traits": [
+            ("Aptitud", "Carne"),
+            ("Adaptación climática", "Alta"),
+            ("Fortaleza productiva", "Resistencia y desarrollo muscular progresivo"),
+            ("Manejo recomendado", "Seguimiento individual del ciclo productivo"),
+        ],
+        "note": "Datos de referencia para enriquecer la lectura técnica del activo individual en la demo.",
+    },
+}
+
 DEMO_TOKEN_STATE_OVERRIDES = {
     "LOT-002": {
         "tokens_sold": 64,
@@ -78,18 +153,19 @@ DEMO_TOKEN_STATE_OVERRIDES = {
 TOKEN_FACE_VALUE_COP = Decimal("100000")
 
 
-def _build_token_market_metrics(total_tokens=0, tokens_sold=0):
+def _build_token_market_metrics(total_tokens=0, tokens_sold=0, token_price_cop=TOKEN_FACE_VALUE_COP):
     safe_total_tokens = max(int(total_tokens or 0), 0)
     safe_tokens_sold = max(0, min(safe_total_tokens, int(tokens_sold or 0)))
     tokens_available = max(safe_total_tokens - safe_tokens_sold, 0)
+    safe_token_price = Decimal(token_price_cop or 0)
 
     return {
         "total_tokens": safe_total_tokens,
         "tokens_sold": safe_tokens_sold,
         "tokens_available": tokens_available,
-        "token_face_value_cop": TOKEN_FACE_VALUE_COP,
-        "capital_available": Decimal(tokens_available) * TOKEN_FACE_VALUE_COP,
-        "capital_raised": Decimal(safe_tokens_sold) * TOKEN_FACE_VALUE_COP,
+        "token_face_value_cop": safe_token_price,
+        "capital_available": Decimal(tokens_available) * safe_token_price,
+        "capital_raised": Decimal(safe_tokens_sold) * safe_token_price,
     }
 
 
@@ -101,7 +177,11 @@ def _get_effective_token_state(tokenized_asset):
     if "tokens_sold" in overrides:
         tokens_sold = overrides["tokens_sold"]
 
-    return _build_token_market_metrics(total_tokens=total_tokens, tokens_sold=tokens_sold)
+    return _build_token_market_metrics(
+        total_tokens=total_tokens,
+        tokens_sold=tokens_sold,
+        token_price_cop=tokenized_asset.token_price,
+    )
 
 
 def _asset_map_context(asset):
@@ -119,6 +199,25 @@ def _asset_map_context(asset):
     location["asset_name"] = asset.name
     location["asset_code"] = asset.code
     return location
+
+
+def _asset_breed_profile(asset):
+    fallback_name = "Ganado comercial tropical" if asset.asset_type == BiologicalAsset.LOT else "Bovino comercial tropical"
+    return ASSET_BREED_PROFILES.get(
+        asset.code,
+        {
+            "name": fallback_name,
+            "eyebrow": "Perfil racial referencial",
+            "summary": "Perfil general de referencia para contextualizar adaptación, manejo y comportamiento productivo del activo ganadero en clima tropical.",
+            "traits": [
+                ("Aptitud", "Carne"),
+                ("Adaptación climática", "Alta en sistemas tropicales"),
+                ("Fortaleza productiva", "Rusticidad y respuesta estable en campo"),
+                ("Manejo recomendado", "Seguimiento zootécnico periódico"),
+            ],
+            "note": "Información referencial para fines académicos y de demostración del modelo AgroTech.",
+        },
+    )
 
 
 def _ensure_investor_profile(user):
@@ -275,6 +374,26 @@ def _estimate_participants(tokenized_asset):
     return max(1, math.ceil(token_state["tokens_sold"] / 6))
 
 
+def _resolve_asset_lifecycle_status(asset, tokens_available):
+    if asset.status == BiologicalAsset.CANCELLED:
+        return "Cancelado", "cancelled"
+    if asset.status in {BiologicalAsset.CLOSED, BiologicalAsset.SOLD}:
+        return "Cerrado", "closed"
+    if asset.status == BiologicalAsset.IN_PRODUCTION:
+        return "En operación", "operation"
+    if asset.status == BiologicalAsset.FUNDED or tokens_available <= 0:
+        return "Financiado", "funded"
+    return "Abierto a inversión", "open"
+
+
+def _resolve_round_status(tokens_sold, tokens_available):
+    if tokens_available <= 0:
+        return "Ronda cerrada", "closed"
+    if tokens_sold > 0:
+        return "Financiación abierta", "live"
+    return "Disponible para inversión", "open"
+
+
 def _format_compact_millions(value):
     amount = Decimal(value or 0)
     if amount >= Decimal("1000000"):
@@ -356,6 +475,8 @@ def _build_asset_snapshot(tokenized_asset, user=None, holding_quantity=None, tot
     capital_available = token_state["capital_available"]
     urgency_label, urgency_tone = _resolve_investment_badge(tokenized_asset)
     participants_estimate = _estimate_participants(tokenized_asset)
+    lifecycle_status_label, lifecycle_status_tone = _resolve_asset_lifecycle_status(asset, tokens_available)
+    round_status_label, round_status_tone = _resolve_round_status(tokens_sold, tokens_available)
     holding_quantity = holding_quantity or 0
     total_invested = total_invested or Decimal("0.00")
     user_participation_pct = (
@@ -363,10 +484,23 @@ def _build_asset_snapshot(tokenized_asset, user=None, holding_quantity=None, tot
         if total_tokens and holding_quantity
         else Decimal("0.00")
     )
+    is_lot = asset.asset_type == BiologicalAsset.LOT
 
     return {
         "asset": asset,
         "image_path": _asset_image_path(asset),
+        "asset_type_label": "Lote ganadero" if is_lot else "Animal individual",
+        "asset_scope_label": "lote" if is_lot else "animal",
+        "weight_initial_label": "Peso promedio inicial por animal" if is_lot else "Peso inicial del animal",
+        "weight_current_label": "Peso promedio actual por animal" if is_lot else "Peso actual del animal",
+        "value_initial_label": "Valor inicial del lote" if is_lot else "Valor inicial del animal",
+        "value_projected_label": "Valor proyectado del lote" if is_lot else "Valor proyectado del animal",
+        "image_caption": "Imagen referencial del lote ganadero." if is_lot else "Imagen referencial del animal tokenizado.",
+        "physical_note": (
+            "Los pesos se presentan como promedio por animal y los valores monetarios corresponden al lote completo."
+            if is_lot
+            else "Los indicadores físicos y monetarios corresponden al animal individual."
+        ),
         "total_tokens": total_tokens,
         "tokens_available": tokens_available,
         "tokens_sold": tokens_sold,
@@ -385,20 +519,12 @@ def _build_asset_snapshot(tokenized_asset, user=None, holding_quantity=None, tot
         "total_invested": total_invested,
         "is_validated": holding_quantity > 0,
         "user_participation_pct": user_participation_pct.quantize(Decimal("0.01")),
-        "status_label": (
-            "Finalizado"
-            if tokens_available <= 0
-            else "En proceso"
-            if tokens_sold > 0
-            else "Disponible"
-        ),
-        "status_tone": (
-            "finalized"
-            if tokens_available <= 0
-            else "progress"
-            if tokens_sold > 0
-            else "available"
-        ),
+        "status_label": lifecycle_status_label,
+        "status_tone": lifecycle_status_tone,
+        "lifecycle_status_label": lifecycle_status_label,
+        "lifecycle_status_tone": lifecycle_status_tone,
+        "round_status_label": round_status_label,
+        "round_status_tone": round_status_tone,
         "flow_duration": round(max(0.7, 1.8 - (progress_percent * 0.01)), 2),
         "flow_intensity": round(min(1, 0.45 + ((tokens_sold / total_tokens) * 0.55 if total_tokens else 0)), 2),
     }
@@ -433,6 +559,8 @@ def _serialize_asset_snapshot(snapshot):
         "holding_quantity": snapshot["holding_quantity"],
         "user_participation_pct": f"{snapshot['user_participation_pct']:.2f}",
         "status_label": snapshot["status_label"],
+        "lifecycle_status_label": snapshot["lifecycle_status_label"],
+        "round_status_label": snapshot["round_status_label"],
     }
 
 
@@ -677,6 +805,7 @@ def asset_detail(request, code):
     context = {
         "asset": asset,
         "asset_snapshot": asset_snapshot,
+        "breed_profile": _asset_breed_profile(asset),
         "asset_map": _asset_map_context(asset),
         "asset_image_path": _asset_image_path(asset),
         "agrotech_token_price_cop": settings.AGROTECH_TOKEN_PRICE_COP,

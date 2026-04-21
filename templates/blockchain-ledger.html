@@ -25,10 +25,9 @@
 
       <section class="agt-ledger" data-ledger-root>
         <div class="agt-ledger__head">
-          <div>
-            <span class="agt-ledger__eyebrow">Libro contable digital</span>
-            <h4>Libro contable digital</h4>
-            <p>Registro secuencial y trazable de operaciones asociadas a los activos tokenizados. Cada compra queda registrada dentro del historial digital del entorno AgroTech.</p>
+          <div class="agt-ledger__toolbar-copy">
+            <span class="agt-ledger__toolbar-eyebrow">Filtros del ledger</span>
+            <p>Refina el libro contable por estado, activo o transacciones asociadas a tu perfil.</p>
           </div>
           <div class="agt-ledger__controls">
             <select data-ledger-status-filter>
@@ -53,8 +52,10 @@
           <div class="col-lg-4 col-md-12 col-sm-12">
             <div class="agt-ledger-card agt-ledger-card--feed">
               <div class="agt-ledger-card__head">
-                <h5>Historial en vivo</h5>
-                <span class="agt-ledger-card__live-pill">Actividad demo</span>
+                <div>
+                  <h5>Historial en vivo</h5>
+                  <p>Flujo resumido de operaciones recientes.</p>
+                </div>
               </div>
               <div class="agt-ledger-feed" data-ledger-feed></div>
             </div>
@@ -62,7 +63,10 @@
           <div class="col-lg-8 col-md-12 col-sm-12">
             <div class="agt-ledger-card agt-ledger-card--table">
               <div class="agt-ledger-card__head">
-                <h5>Registro detallado / ledger</h5>
+                <div>
+                  <h5>Ledger detallado</h5>
+                  <p>Vista auditable con bloque, wallets, hash y estado.</p>
+                </div>
                 <button type="button" class="agt-ledger__expand" data-ledger-expand>Ver ledger completo</button>
               </div>
               <div class="agt-ledger-table-wrap">

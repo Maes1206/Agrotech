@@ -69,12 +69,13 @@
     return copCurrencyFormatter.format(Number.isFinite(numeric) ? numeric : 0);
   }
 
-  function calculateAvailableCapital(value) {
+  function calculateAvailableCapital(value, tokenPrice) {
     const tokensAvailable = Math.max(toInteger(value), 0);
-    return tokensAvailable * TOKEN_FACE_VALUE_COP;
+    const normalizedTokenPrice = Number(tokenPrice || TOKEN_FACE_VALUE_COP);
+    return tokensAvailable * (Number.isFinite(normalizedTokenPrice) ? normalizedTokenPrice : TOKEN_FACE_VALUE_COP);
   }
 
-  function buildOpportunityMarketMetrics(totalTokens, tokensSold) {
+  function buildOpportunityMarketMetrics(totalTokens, tokensSold, tokenPrice) {
     const normalizedTotalTokens = Math.max(toInteger(totalTokens), 0);
     const normalizedTokensSold = clampNumber(toInteger(tokensSold), 0, normalizedTotalTokens);
     const tokensAvailable = Math.max(normalizedTotalTokens - normalizedTokensSold, 0);
@@ -83,8 +84,8 @@
       total_tokens: normalizedTotalTokens,
       tokens_sold: normalizedTokensSold,
       tokens_available: tokensAvailable,
-      capital_available: calculateAvailableCapital(tokensAvailable),
-      capital_raised: calculateAvailableCapital(normalizedTokensSold),
+      capital_available: calculateAvailableCapital(tokensAvailable, tokenPrice),
+      capital_raised: calculateAvailableCapital(normalizedTokensSold, tokenPrice),
     };
   }
 
@@ -210,8 +211,8 @@
   }
 
   function normalizeOpportunitySnapshot(input) {
-    const marketMetrics = buildOpportunityMarketMetrics(input.total_tokens, input.tokens_sold);
     const tokenPrice = Number(input.token_price || 0);
+    const marketMetrics = buildOpportunityMarketMetrics(input.total_tokens, input.tokens_sold, tokenPrice);
     const estimatedReturn = Number(input.estimated_return || 0);
     const progressPercent = marketMetrics.total_tokens ? Math.round((marketMetrics.tokens_sold / marketMetrics.total_tokens) * 100) : 0;
     const capitalAvailable = input.capital_available !== undefined
@@ -495,12 +496,42 @@
         openButton.dataset.urgencyLabel = snapshot.urgency_label;
         openButton.dataset.urgencyTone = snapshot.urgency_tone;
         openButton.dataset.assetHolding = String(snapshot.holding_quantity);
+        openButton.dataset.assetStatus = snapshot.lifecycle_status_label || snapshot.status_label;
+        openButton.disabled = snapshot.tokens_available <= 0;
+        const buttonText = openButton.querySelector(".txt");
+        if (buttonText) {
+          buttonText.textContent = snapshot.tokens_available > 0 ? "Invertir en este lote con AGT" : "Ronda cerrada";
+        }
       }
     }
 
     const statusEl = document.querySelector("[data-detail-status-label]");
     if (statusEl) {
-      statusEl.textContent = "Estado: " + snapshot.status_label;
+      statusEl.textContent = "Estado del activo: " + (snapshot.lifecycle_status_label || snapshot.status_label);
+    }
+    const roundStatusPill = document.querySelector("[data-detail-round-status-pill]");
+    if (roundStatusPill) {
+      roundStatusPill.textContent = "Ronda: " + snapshot.round_status_label;
+    }
+    const roundStatus = document.querySelector("[data-detail-round-status]");
+    if (roundStatus) {
+      roundStatus.textContent = snapshot.round_status_label;
+    }
+    const roundStatusStrong = document.querySelector("[data-detail-round-status-strong]");
+    if (roundStatusStrong) {
+      roundStatusStrong.textContent = snapshot.round_status_label;
+    }
+    const sideRoundStatus = document.querySelector("[data-detail-side-round-status]");
+    if (sideRoundStatus) {
+      sideRoundStatus.textContent = snapshot.round_status_label;
+    }
+    const lifecycleStrong = document.querySelector("[data-detail-lifecycle-strong]");
+    if (lifecycleStrong) {
+      lifecycleStrong.textContent = snapshot.lifecycle_status_label || snapshot.status_label;
+    }
+    const sideLifecycle = document.querySelector("[data-detail-side-lifecycle-status]");
+    if (sideLifecycle) {
+      sideLifecycle.textContent = snapshot.lifecycle_status_label || snapshot.status_label;
     }
     const progressValue = document.querySelector("[data-detail-progress-value]");
     if (progressValue) {
@@ -512,27 +543,47 @@
     }
     const progressCopy = document.querySelector("[data-detail-progress-copy]");
     if (progressCopy) {
-      progressCopy.textContent = snapshot.tokens_sold + " / " + snapshot.total_tokens + " tokens vendidos";
+      progressCopy.textContent = snapshot.tokens_sold + " / " + snapshot.total_tokens + " tokens colocados";
     }
     const availabilityCopy = document.querySelector("[data-detail-availability-copy]");
     if (availabilityCopy) {
-      availabilityCopy.textContent = snapshot.tokens_available + " tokens restantes";
+      availabilityCopy.textContent = snapshot.tokens_available + " tokens disponibles para inversión";
     }
-    const units = document.querySelector("[data-detail-asset-units]");
-    if (units) {
-      units.textContent = snapshot.tokens_available + " / " + snapshot.total_tokens;
+    const tokensIssued = document.querySelector("[data-detail-token-issued]");
+    if (tokensIssued) {
+      tokensIssued.textContent = snapshot.total_tokens;
+    }
+    const tokensSold = document.querySelector("[data-detail-token-sold]");
+    if (tokensSold) {
+      tokensSold.textContent = snapshot.tokens_sold;
+    }
+    const tokenAvailable = document.querySelector("[data-detail-token-available]");
+    if (tokenAvailable) {
+      tokenAvailable.textContent = snapshot.tokens_available;
+    }
+    const fundingPercent = document.querySelector("[data-detail-funding-percent]");
+    if (fundingPercent) {
+      fundingPercent.textContent = snapshot.progress_percent + "%";
     }
     const capitalRaised = document.querySelector("[data-detail-capital-raised]");
     if (capitalRaised) {
       capitalRaised.textContent = formatCurrency(snapshot.capital_raised);
     }
-    const capitalRemaining = document.querySelector("[data-detail-capital-remaining]");
-    if (capitalRemaining) {
-      capitalRemaining.textContent = formatCurrency(snapshot.capital_available);
+    const capitalRaisedGrid = document.querySelector("[data-detail-capital-raised-grid]");
+    if (capitalRaisedGrid) {
+      capitalRaisedGrid.textContent = formatCurrency(snapshot.capital_raised);
+    }
+    const capitalPending = document.querySelector("[data-detail-capital-pending]");
+    if (capitalPending) {
+      capitalPending.textContent = formatCurrency(snapshot.capital_available);
     }
     const participants = document.querySelector("[data-detail-participants]");
     if (participants) {
       participants.textContent = snapshot.participants_estimate;
+    }
+    const participantsGrid = document.querySelector("[data-detail-participants-grid]");
+    if (participantsGrid) {
+      participantsGrid.textContent = snapshot.participants_estimate;
     }
     const positionTokens = document.querySelector("[data-detail-position-tokens]");
     if (positionTokens) {
