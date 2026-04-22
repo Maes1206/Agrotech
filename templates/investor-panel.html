@@ -9,7 +9,7 @@
 <link href="{% static 'css/bootstrap.css' %}" rel="stylesheet">
 <link href="{% static 'css/style.css' %}" rel="stylesheet">
 <link href="{% static 'css/responsive.css' %}" rel="stylesheet">
-<link href="{% static 'css/investor-panel.css' %}?v=20260418-2" rel="stylesheet">
+<link href="{% static 'css/investor-panel.css' %}?v=20260421-9" rel="stylesheet">
 <link href="{% static 'css/agrotech-investment.css' %}?v=20260418-1" rel="stylesheet">
 </head>
 <body>
@@ -167,7 +167,7 @@
 
               <div class="investor-actions">
                 <button class="theme-btn btn-style-twelve" type="button" id="open-checkout-btn" {% if not calculation or not calculation.can_buy %}disabled{% endif %}>
-                  <span class="txt">Buy Tokens</span>
+                  <span class="txt">Comprar tokens</span>
                 </button>
               </div>
               <div
@@ -240,21 +240,74 @@
                     <div class="wallet-balance-label">
                       Total Balance
                     </div>
-                    <div class="eye-icon-wrapper">
-                      <svg class="eye-icon eye-slash" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <line x1="3" y1="3" x2="21" y2="21"></line>
-                      </svg>
-                      <svg class="eye-icon eye-open" style="opacity: 0;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                        <circle cx="12" cy="12" r="3"></circle>
-                      </svg>
-                    </div>
                   </div>
                 </div>
               </div>
             </div>
+
+            <section class="physical-wallet-panel is-empty" data-physical-wallet data-stored-tokens="0" aria-label="Wallet física AGT">
+              <div class="physical-wallet-panel__transfer-line" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <button type="button" class="physical-wallet-panel__summary" data-physical-wallet-toggle aria-expanded="false" aria-controls="physical-wallet-details">
+                <span class="physical-wallet-panel__head">
+                  <span>
+                    <span class="physical-wallet-panel__eyebrow">Destino de custodia</span>
+                    <span class="physical-wallet-panel__title">Wallet física AGT</span>
+                  </span>
+                  <span class="physical-wallet-panel__security" aria-label="Validación NFC y custodia segura">
+                    <span>NFC</span>
+                    <span aria-hidden="true">🔒</span>
+                  </span>
+                </span>
+                <span class="physical-wallet-panel__summary-body">
+                  <span class="physical-wallet-panel__summary-copy">
+                    <span data-physical-wallet-message>Compra AGT para transferirlos a tu wallet segura.</span>
+                    <em data-physical-wallet-hint>Haz click para ver detalles</em>
+                  </span>
+                  <span class="physical-wallet-device physical-wallet-device--compact" aria-hidden="true">
+                  <span class="physical-wallet-device__inner">
+                    <span class="physical-wallet-device__face physical-wallet-device__face--front">
+                      <img src="{% static 'images/Tarjetas/tarjeta agrotech-01.png' %}" alt="Frente de la wallet física AGT" class="physical-wallet-device__image">
+                    </span>
+                    <span class="physical-wallet-device__face physical-wallet-device__face--back">
+                      <img src="{% static 'images/Tarjetas/tarjeta agrotech-02.png' %}" alt="Reverso de la wallet física AGT" class="physical-wallet-device__image">
+                    </span>
+                  </span>
+                  <span class="physical-wallet-device__chip-glow" aria-hidden="true"></span>
+                  </span>
+                </span>
+              </button>
+
+              <div class="physical-wallet-panel__details" id="physical-wallet-details" data-physical-wallet-details aria-hidden="true">
+                <p class="physical-wallet-panel__copy">Tus tokens comprados se transfieren a esta wallet segura para reforzar trazabilidad, custodia y confianza.</p>
+                <div class="physical-wallet-panel__secure-copy" data-physical-wallet-custody-summary hidden>
+                  <div class="physical-wallet-panel__balance">
+                    <strong data-physical-wallet-detail-balance>Sin AGT resguardados</strong>
+                    <span data-physical-wallet-detail-message>Aún no hay tokens resguardados en esta wallet física.</span>
+                  </div>
+                  <div class="physical-wallet-panel__state-row">
+                    <span>Estado de custodia</span>
+                    <strong data-physical-wallet-status>Lista para recibir AGT</strong>
+                  </div>
+                </div>
+                <div class="physical-wallet-nfc" data-wallet-nfc data-nfc-payload-url="" data-nfc-validate-url="" data-nfc-state="idle">
+                  <div class="physical-wallet-nfc__head">
+                    <span>NFC wallet física</span>
+                    <strong data-nfc-status>NFC verificando...</strong>
+                  </div>
+                  <p data-nfc-message>Activa NFC desde un celular Android compatible para leer o escribir tu wallet física AGT.</p>
+                  <div class="physical-wallet-nfc__actions" aria-label="Acciones NFC de wallet física">
+                    <button type="button" data-nfc-activate>Activar NFC</button>
+                    <button type="button" data-nfc-read disabled>Leer wallet</button>
+                    <button type="button" data-nfc-write disabled>Escribir en wallet</button>
+                  </div>
+                  <div class="physical-wallet-nfc__result" data-nfc-result hidden aria-live="polite"></div>
+                </div>
+              </div>
+            </section>
           </aside>
         </div>
       </div>
@@ -738,11 +791,11 @@
                 <button type="button" class="theme-btn btn-style-eight" id="checkout-cancel-btn"><span class="txt">Cancelar</span></button>
                 <button type="button" class="theme-btn btn-style-twelve checkout-pay" id="checkout-confirm-btn"><span class="txt">Confirmar compra</span></button>
               </div>
-              <p class="checkout-note">Al confirmar, AgroTech registra la compra y actualiza tu wallet con el nuevo balance de tokens.</p>
+              <p class="checkout-note">Al confirmar, AgroTech registra la compra y simula la transferencia de AGT hacia la wallet física segura.</p>
               <div class="checkout-processing" id="checkout-processing" aria-live="polite">
                 <div class="checkout-spinner"></div>
-                <h5>Confirmando compra</h5>
-                <p>Estamos validando tu compra con AgroTech y registrando tus tokens AGT en el portafolio.</p>
+                <h5 id="checkout-processing-title">Validando compra</h5>
+                <p id="checkout-processing-message">Estamos validando la compra y preparando la transferencia segura hacia la wallet física.</p>
               </div>
             </div>
           </div>
@@ -1029,12 +1082,15 @@
       });
 
       const form = document.getElementById("investor-panel-form");
+      const investorCardLayout = document.querySelector(".investor-card-layout");
       const openBtn = document.getElementById("open-checkout-btn");
       const modal = document.getElementById("checkout-modal");
       const closeBtn = document.getElementById("checkout-close");
       const cancelBtn = document.getElementById("checkout-cancel-btn");
       const confirmBtn = document.getElementById("checkout-confirm-btn");
       const processing = document.getElementById("checkout-processing");
+      const processingTitle = document.getElementById("checkout-processing-title");
+      const processingMessage = document.getElementById("checkout-processing-message");
       const actionInput = document.getElementById("investor-panel-action");
       const btcInput = document.getElementById("id_btc_amount");
       const btcSlider = document.getElementById("btc-amount-slider");
@@ -1072,6 +1128,28 @@
       const walletDefaultLast4 = wallet && /^\d{4}$/.test(String(wallet.dataset.defaultLast4 || "")) ? String(wallet.dataset.defaultLast4) : "4242";
       const linkedCardHolderInput = document.getElementById("linked-card-holder-input");
       const linkedCardLast4Input = document.getElementById("linked-card-last4-input");
+      const physicalWallet = document.querySelector("[data-physical-wallet]");
+      const physicalWalletMessage = physicalWallet ? physicalWallet.querySelector("[data-physical-wallet-message]") : null;
+      const physicalWalletDetailBalance = physicalWallet ? physicalWallet.querySelector("[data-physical-wallet-detail-balance]") : null;
+      const physicalWalletDetailMessage = physicalWallet ? physicalWallet.querySelector("[data-physical-wallet-detail-message]") : null;
+      const physicalWalletStatus = physicalWallet ? physicalWallet.querySelector("[data-physical-wallet-status]") : null;
+      const physicalWalletToggle = physicalWallet ? physicalWallet.querySelector("[data-physical-wallet-toggle]") : null;
+      const physicalWalletDetails = physicalWallet ? physicalWallet.querySelector("[data-physical-wallet-details]") : null;
+      const physicalWalletHint = physicalWallet ? physicalWallet.querySelector("[data-physical-wallet-hint]") : null;
+      const physicalWalletCustodySummary = physicalWallet ? physicalWallet.querySelector("[data-physical-wallet-custody-summary]") : null;
+      const walletNfc = physicalWallet ? physicalWallet.querySelector("[data-wallet-nfc]") : null;
+      const walletNfcStatus = walletNfc ? walletNfc.querySelector("[data-nfc-status]") : null;
+      const walletNfcMessage = walletNfc ? walletNfc.querySelector("[data-nfc-message]") : null;
+      const walletNfcResult = walletNfc ? walletNfc.querySelector("[data-nfc-result]") : null;
+      const walletNfcActivate = walletNfc ? walletNfc.querySelector("[data-nfc-activate]") : null;
+      const walletNfcRead = walletNfc ? walletNfc.querySelector("[data-nfc-read]") : null;
+      const walletNfcWrite = walletNfc ? walletNfc.querySelector("[data-nfc-write]") : null;
+      let physicalWalletStoredTokens = physicalWallet ? Math.max(parseInt(physicalWallet.dataset.storedTokens || "0", 10) || 0, 0) : 0;
+      let physicalWalletStage = physicalWalletStoredTokens > 0 ? "success" : "empty";
+      let walletNfcReader = null;
+      let walletNfcAbortController = null;
+      let walletNfcActive = false;
+      let walletNfcLastPayload = null;
       const serverLinkedCard = wallet ? {
         holder: wallet.dataset.linkedHolder || "",
         last4: wallet.dataset.linkedLast4 || ""
@@ -1098,6 +1176,500 @@
 
       const formatBtc = function (value) {
         return (Number.isFinite(value) ? value : 0).toFixed(6) + " BTC";
+      };
+
+      const resetPhysicalWalletClasses = function () {
+        if (!physicalWallet) {
+          return;
+        }
+        physicalWallet.classList.remove("is-empty", "is-ready", "is-validating", "is-transferring", "is-success", "is-confirmed-pulse");
+      };
+
+      const getPhysicalWalletStoredLabel = function () {
+        return physicalWalletStoredTokens > 0
+          ? physicalWalletStoredTokens + " AGT resguardados"
+          : "Sin AGT resguardados";
+      };
+
+      const setPhysicalWalletExpanded = function (expanded) {
+        if (!physicalWallet || !physicalWalletToggle || !physicalWalletDetails) {
+          return;
+        }
+        physicalWallet.classList.toggle("is-expanded", expanded);
+        physicalWalletToggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+        physicalWalletDetails.setAttribute("aria-hidden", expanded ? "false" : "true");
+        if (physicalWalletHint) {
+          physicalWalletHint.textContent = expanded ? "Haz click para ocultar detalles" : "Haz click para ver detalles";
+        }
+      };
+
+      const syncPhysicalWalletDetail = function (message, status) {
+        if (!physicalWalletDetailBalance || !physicalWalletDetailMessage) {
+          return;
+        }
+        physicalWalletDetailBalance.textContent = getPhysicalWalletStoredLabel();
+        physicalWalletDetailMessage.textContent = message;
+        if (physicalWalletStatus && status) {
+          physicalWalletStatus.textContent = status;
+        }
+      };
+
+      const revealPhysicalWalletCustodySummary = function (payload) {
+        if (!physicalWalletCustodySummary) {
+          return;
+        }
+
+        const safePayload = payload && payload.json ? payload.json : payload;
+        const storedFromNfc = safePayload && Number.isFinite(parseInt(safePayload.storedTokens || safePayload.tokensToTransfer || safePayload.tokens || "0", 10))
+          ? Math.max(parseInt(safePayload.storedTokens || safePayload.tokensToTransfer || safePayload.tokens || "0", 10) || 0, 0)
+          : 0;
+        if (storedFromNfc > 0) {
+          physicalWalletStoredTokens = storedFromNfc;
+          physicalWallet.dataset.storedTokens = String(physicalWalletStoredTokens);
+        }
+        physicalWalletCustodySummary.hidden = false;
+        syncPhysicalWalletDetail("Lectura NFC validada en esta wallet física.", "Wallet leída correctamente");
+      };
+
+      const renderPhysicalWallet = function (stage, payload) {
+        if (!physicalWallet || !physicalWalletMessage) {
+          return;
+        }
+
+        const safePayload = payload || {};
+        const tokens = Math.max(parseInt(safePayload.tokens || "0", 10) || 0, 0);
+        physicalWalletStage = stage;
+        if (investorCardLayout) {
+          investorCardLayout.classList.toggle("is-routing", stage === "validating" || stage === "transferring");
+        }
+        resetPhysicalWalletClasses();
+        physicalWallet.classList.add("is-" + stage);
+
+        if (stage === "validating") {
+          setPhysicalWalletExpanded(true);
+          physicalWalletMessage.textContent = "Validando compra antes de custodiar " + tokens + " AGT.";
+          syncPhysicalWalletDetail("Validando compra antes de custodiar " + tokens + " AGT.", "Validando operación");
+          return;
+        }
+
+        if (stage === "transferring") {
+          setPhysicalWalletExpanded(true);
+          physicalWalletMessage.textContent = "Transfiriendo AGT a wallet segura...";
+          syncPhysicalWalletDetail("Transfiriendo AGT a wallet segura...", "Transferencia en proceso");
+          return;
+        }
+
+        if (stage === "success") {
+          if (tokens > 0) {
+            physicalWalletStoredTokens += tokens;
+            physicalWallet.dataset.storedTokens = String(physicalWalletStoredTokens);
+          }
+          physicalWalletMessage.textContent = tokens > 0
+            ? tokens + " AGT transferidos a tu wallet segura."
+            : "Tus tokens están bajo custodia visual segura.";
+          syncPhysicalWalletDetail(tokens > 0
+            ? "Tus tokens fueron transferidos con éxito."
+            : "Tus tokens fueron transferidos con éxito.", "Activa y resguardada");
+          if (tokens > 0) {
+            physicalWallet.classList.add("is-confirmed-pulse");
+            window.setTimeout(function () {
+              physicalWallet.classList.remove("is-confirmed-pulse");
+            }, 950);
+          }
+          return;
+        }
+
+        if (stage === "ready") {
+          physicalWalletMessage.textContent = tokens + " AGT listos para transferirse al confirmar la compra.";
+          syncPhysicalWalletDetail(tokens + " AGT listos para transferirse al confirmar la compra.", "Lista para recibir AGT");
+          return;
+        }
+
+        physicalWalletMessage.textContent = physicalWalletStoredTokens > 0
+          ? "Tus tokens están bajo custodia visual segura."
+          : "Compra AGT para transferirlos a tu wallet segura.";
+        syncPhysicalWalletDetail(physicalWalletStoredTokens > 0
+          ? "Tus tokens fueron transferidos con éxito."
+          : "Aún no hay tokens resguardados en esta wallet física.",
+          physicalWalletStoredTokens > 0 ? "Activa y resguardada" : "Lista para recibir AGT");
+      };
+
+      function checkNfcSupport() {
+        const isSupported = "NDEFReader" in window;
+        updateWalletNfcUI(isSupported ? "idle" : "unsupported");
+        return isSupported;
+      }
+
+      function getWalletNfcErrorMessage(error) {
+        const name = error && error.name ? error.name : "";
+        if (name === "NotAllowedError") {
+          return "Permiso NFC denegado. Autoriza el acceso desde el navegador para continuar.";
+        }
+        if (name === "NotSupportedError") {
+          return "Este dispositivo no soporta NFC web.";
+        }
+        if (name === "NotReadableError") {
+          return "No se pudo leer la wallet. Verifica que NFC esté activo y acerca de nuevo la tarjeta.";
+        }
+        if (name === "AbortError") {
+          return "Operación NFC cancelada.";
+        }
+        return error && error.message ? error.message : "Ocurrió un error NFC. Intenta nuevamente.";
+      }
+
+      function formatWalletNfcResult(data) {
+        if (!data) {
+          return "";
+        }
+        if (typeof data === "string") {
+          return data;
+        }
+        try {
+          return JSON.stringify(data, null, 2);
+        } catch (error) {
+          return String(data);
+        }
+      }
+
+      function updateWalletNfcUI(state, data) {
+        if (!walletNfc) {
+          return;
+        }
+
+        const safeData = data || {};
+        const busy = state === "activating" || state === "reading" || state === "writing";
+        const supported = "NDEFReader" in window;
+        const labels = {
+          idle: "NFC disponible",
+          unsupported: "NFC no compatible",
+          activating: "Activando NFC...",
+          ready: "NFC disponible",
+          reading: "Leyendo wallet AGT...",
+          writing: "Escribiendo datos...",
+          success: "Operación NFC exitosa",
+          error: "Error NFC"
+        };
+        const messages = {
+          idle: "NFC disponible en este dispositivo. Activa la sesión para leer o escribir tu wallet física.",
+          unsupported: "Este dispositivo no soporta NFC web. Prueba desde Chrome en Android con NFC activo.",
+          activating: "Preparando la sesión NFC segura desde el navegador.",
+          ready: "Acerca tu wallet física al celular cuando vayas a leer o escribir.",
+          reading: "Acerca tu wallet física al celular. Mantén la tarjeta quieta hasta terminar la lectura.",
+          writing: "Escribiendo datos en la wallet. Mantén la tarjeta cerca del celular.",
+          success: "Wallet física AGT sincronizada correctamente.",
+          error: "No se pudo completar la operación NFC."
+        };
+
+        walletNfc.dataset.nfcState = state;
+        if (walletNfcStatus) {
+          walletNfcStatus.textContent = safeData.status || labels[state] || labels.idle;
+        }
+        if (walletNfcMessage) {
+          walletNfcMessage.textContent = safeData.message || messages[state] || messages.idle;
+        }
+        if (walletNfcActivate) {
+          walletNfcActivate.disabled = !supported || busy;
+        }
+        if (walletNfcRead) {
+          walletNfcRead.disabled = !supported || !walletNfcActive || busy;
+        }
+        if (walletNfcWrite) {
+          walletNfcWrite.disabled = !supported || !walletNfcActive || busy;
+        }
+        if (walletNfcResult) {
+          const output = safeData.result || safeData.payload || safeData.error || null;
+          walletNfcResult.hidden = !output;
+          walletNfcResult.textContent = output ? formatWalletNfcResult(output) : "";
+        }
+        if (physicalWallet) {
+          physicalWallet.classList.toggle("is-nfc-active", walletNfcActive && state !== "unsupported" && state !== "error");
+          physicalWallet.classList.toggle("is-nfc-unsupported", state === "unsupported");
+          physicalWallet.classList.toggle("is-nfc-error", state === "error");
+        }
+      }
+
+      function getCsrfToken() {
+        const csrfInput = form.querySelector("input[name='csrfmiddlewaretoken']");
+        return csrfInput ? csrfInput.value : "";
+      }
+
+      function getTextFromSelector(selector, fallback) {
+        const node = document.querySelector(selector);
+        const text = node ? node.textContent.trim() : "";
+        return text || fallback || "";
+      }
+
+      function buildWalletNfcPayload() {
+        const selectedCard = document.querySelector(".investor-opportunity-card.is-selected") || opportunityCards[0];
+        const quote = quoteState && quoteState.quote ? quoteState.quote : calculateQuote(getBtcAmount());
+        return {
+          app: "AgroTech",
+          type: "agt_physical_wallet",
+          version: 1,
+          wallet: "Wallet física AGT",
+          assetCode: selectedCard ? selectedCard.dataset.assetCode : (selectedAssetCodeInput ? selectedAssetCodeInput.value : ""),
+          assetName: selectedCard ? selectedCard.dataset.assetName : (checkoutAssetName ? checkoutAssetName.textContent.trim() : "Activo AgroTech"),
+          tokensToTransfer: Math.max(parseInt(quote.estimatedTokens || "0", 10) || 0, 0),
+          storedTokens: physicalWalletStoredTokens,
+          btcAmount: quote.btcAmount,
+          equivalentUsd: quote.equivalentUsd,
+          equivalentCop: quote.equivalentCop,
+          custodyStatus: physicalWalletStatus ? physicalWalletStatus.textContent.trim() : "Lista para recibir AGT",
+          blockchain: {
+            contractId: getTextFromSelector("[data-contract-id]", "-"),
+            txHash: getTextFromSelector("[data-contract-hash]", "-"),
+            blockId: getTextFromSelector("[data-contract-block]", "-"),
+            issuedAt: getTextFromSelector("[data-contract-issued]", "-")
+          },
+          issuedAt: new Date().toISOString()
+        };
+      }
+
+      async function fetchWalletNfcPayload() {
+        const endpoint = walletNfc ? walletNfc.dataset.nfcPayloadUrl : "";
+        if (!endpoint) {
+          return buildWalletNfcPayload();
+        }
+
+        // Hook opcional: conectar aquí un endpoint Django que devuelva el payload NFC.
+        const response = await fetch(endpoint, {
+          headers: {
+            "Accept": "application/json"
+          }
+        });
+        if (!response.ok) {
+          throw new Error("No se pudo obtener el payload NFC desde Django.");
+        }
+        return response.json();
+      }
+
+      async function validateWalletNfcPayload(parsedPayload) {
+        const endpoint = walletNfc ? walletNfc.dataset.nfcValidateUrl : "";
+        if (!endpoint) {
+          return null;
+        }
+
+        // Hook opcional: validar contra Django el contenido leído desde la wallet física.
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCsrfToken()
+          },
+          body: JSON.stringify({ payload: parsedPayload })
+        });
+        if (!response.ok) {
+          throw new Error("La validación NFC del backend no fue exitosa.");
+        }
+        return response.json();
+      }
+
+      function parseNdefMessage(message) {
+        const records = message && message.records ? Array.from(message.records) : [];
+        if (!records.length) {
+          throw new Error("Tag NFC vacío. No hay datos NDEF para mostrar.");
+        }
+
+        const parsedRecords = records.map(function (record) {
+          const recordData = record.data ? new TextDecoder(record.encoding || "utf-8").decode(record.data) : "";
+          let jsonData = null;
+          if (recordData) {
+            try {
+              jsonData = JSON.parse(recordData);
+            } catch (error) {
+              jsonData = null;
+            }
+          }
+          return {
+            recordType: record.recordType || "unknown",
+            mediaType: record.mediaType || "",
+            id: record.id || "",
+            text: recordData,
+            json: jsonData
+          };
+        });
+
+        const jsonRecord = parsedRecords.find(function (record) {
+          return record.json;
+        });
+        return {
+          recordCount: parsedRecords.length,
+          records: parsedRecords,
+          text: parsedRecords.map(function (record) {
+            return record.text;
+          }).filter(Boolean).join("\n"),
+          json: jsonRecord ? jsonRecord.json : null
+        };
+      }
+
+      async function activateNfc() {
+        if (!walletNfc) {
+          return false;
+        }
+        if (!checkNfcSupport()) {
+          return false;
+        }
+
+        updateWalletNfcUI("activating");
+        try {
+          walletNfcReader = new NDEFReader();
+          walletNfcActive = true;
+          updateWalletNfcUI("ready", {
+            message: "NFC disponible en este dispositivo. Ya puedes leer o escribir la wallet física."
+          });
+          return true;
+        } catch (error) {
+          walletNfcActive = false;
+          updateWalletNfcUI("error", {
+            message: getWalletNfcErrorMessage(error),
+            error: { name: error.name || "NFCError", message: getWalletNfcErrorMessage(error) }
+          });
+          return false;
+        }
+      }
+
+      async function readNfcTag() {
+        if (!walletNfcActive) {
+          const activated = await activateNfc();
+          if (!activated) {
+            return;
+          }
+        }
+
+        updateWalletNfcUI("reading");
+        try {
+          if (walletNfcAbortController) {
+            walletNfcAbortController.abort();
+          }
+          walletNfcAbortController = new AbortController();
+          walletNfcReader = new NDEFReader();
+          walletNfcReader.onreading = async function (event) {
+            try {
+              const parsed = parseNdefMessage(event.message);
+              walletNfcLastPayload = parsed.json || parsed.text || parsed;
+              if (walletNfcAbortController) {
+                walletNfcAbortController.abort();
+                walletNfcAbortController = null;
+              }
+
+              const validation = await validateWalletNfcPayload(parsed);
+              revealPhysicalWalletCustodySummary(parsed);
+              updateWalletNfcUI("success", {
+                status: "Wallet leída correctamente",
+                message: validation ? "Wallet leída y validada correctamente." : "Wallet leída correctamente.",
+                result: validation ? { lectura: parsed, validacion: validation } : parsed
+              });
+            } catch (error) {
+              updateWalletNfcUI("error", {
+                message: getWalletNfcErrorMessage(error),
+                error: { name: error.name || "NFCReadError", message: getWalletNfcErrorMessage(error) }
+              });
+            }
+          };
+          walletNfcReader.onreadingerror = function () {
+            updateWalletNfcUI("error", {
+              message: "Error al leer. Acerca nuevamente la wallet física al celular.",
+              error: { message: "Error al leer el tag NFC." }
+            });
+          };
+          await walletNfcReader.scan({ signal: walletNfcAbortController.signal });
+        } catch (error) {
+          updateWalletNfcUI("error", {
+            message: getWalletNfcErrorMessage(error),
+            error: { name: error.name || "NFCScanError", message: getWalletNfcErrorMessage(error) }
+          });
+        }
+      }
+
+      async function writeNfcTag(payload) {
+        if (!walletNfcActive) {
+          const activated = await activateNfc();
+          if (!activated) {
+            return;
+          }
+        }
+
+        updateWalletNfcUI("writing");
+        try {
+          const nfcPayload = payload || await fetchWalletNfcPayload();
+          const encodedPayload = new TextEncoder().encode(JSON.stringify(nfcPayload));
+          const writer = new NDEFReader();
+          await writer.write({
+            records: [{
+              recordType: "mime",
+              mediaType: "application/json",
+              data: encodedPayload
+            }]
+          });
+          walletNfcLastPayload = nfcPayload;
+          updateWalletNfcUI("success", {
+            status: "Datos escritos correctamente",
+            message: "Datos escritos correctamente en la wallet física AGT.",
+            payload: nfcPayload
+          });
+        } catch (error) {
+          updateWalletNfcUI("error", {
+            message: getWalletNfcErrorMessage(error),
+            error: { name: error.name || "NFCWriteError", message: getWalletNfcErrorMessage(error) }
+          });
+        }
+      }
+
+      const syncPhysicalWalletQuote = function (quote) {
+        if (!physicalWallet || physicalWalletStage === "validating" || physicalWalletStage === "transferring") {
+          return;
+        }
+
+        if (quote && quote.canBuy && quote.estimatedTokens > 0) {
+          renderPhysicalWallet("ready", { tokens: quote.estimatedTokens });
+          return;
+        }
+
+        renderPhysicalWallet(physicalWalletStoredTokens > 0 ? "success" : "empty");
+      };
+
+      const previewPhysicalWalletValidation = function (tokens) {
+        if (!physicalWallet || tokens < 1) {
+          return;
+        }
+        renderPhysicalWallet("validating", { tokens: tokens });
+        window.setTimeout(function () {
+          if (physicalWalletStage === "validating") {
+            renderPhysicalWallet("ready", { tokens: tokens });
+          }
+        }, 850);
+      };
+
+      const runPhysicalWalletTransfer = function (tokens) {
+        if (!physicalWallet || tokens < 1) {
+          return;
+        }
+        if (processingTitle) {
+          processingTitle.textContent = "Validando compra";
+        }
+        if (processingMessage) {
+          processingMessage.textContent = "Estamos validando tu compra antes de transferir " + tokens + " AGT.";
+        }
+        renderPhysicalWallet("validating", { tokens: tokens });
+        window.setTimeout(function () {
+          if (processingTitle) {
+            processingTitle.textContent = "Transfiriendo AGT";
+          }
+          if (processingMessage) {
+            processingMessage.textContent = "Transfiriendo AGT a la wallet física segura...";
+          }
+          renderPhysicalWallet("transferring", { tokens: tokens });
+        }, 520);
+        window.setTimeout(function () {
+          if (processingTitle) {
+            processingTitle.textContent = "Tokens resguardados";
+          }
+          if (processingMessage) {
+            processingMessage.textContent = "Tus tokens fueron transferidos a la wallet segura.";
+          }
+          renderPhysicalWallet("success", { tokens: tokens });
+        }, 1320);
       };
 
       const parseNumeric = function (value) {
@@ -1303,6 +1875,7 @@
           openBtn.disabled = !quote.canBuy;
         }
 
+        syncPhysicalWalletQuote(quote);
         syncCheckoutSummary();
       };
 
@@ -1570,6 +2143,42 @@
       loadLinkedCard();
       updateSavedCardNote();
       renderQuote(quoteState.quote);
+      setPhysicalWalletExpanded(false);
+
+      if (physicalWalletToggle) {
+        physicalWalletToggle.addEventListener("click", function () {
+          const isExpanded = physicalWalletToggle.getAttribute("aria-expanded") === "true";
+          setPhysicalWalletExpanded(!isExpanded);
+        });
+      }
+
+      if (walletNfc) {
+        checkNfcSupport();
+        if (walletNfcActivate) {
+          walletNfcActivate.addEventListener("click", function () {
+            activateNfc();
+          });
+        }
+        if (walletNfcRead) {
+          walletNfcRead.addEventListener("click", function () {
+            readNfcTag();
+          });
+        }
+        if (walletNfcWrite) {
+          walletNfcWrite.addEventListener("click", function () {
+            writeNfcTag();
+          });
+        }
+      }
+
+      window.agroTechWalletNfc = {
+        checkNfcSupport: checkNfcSupport,
+        activateNfc: activateNfc,
+        readNfcTag: readNfcTag,
+        writeNfcTag: writeNfcTag,
+        parseNdefMessage: parseNdefMessage,
+        updateWalletNfcUI: updateWalletNfcUI
+      };
 
       if (wallet) {
         const clearWalletInteraction = function () {
@@ -1608,6 +2217,7 @@
         if (openBtn.disabled) {
           return;
         }
+        previewPhysicalWalletValidation(quoteState.quote.estimatedTokens || 0);
         updateSavedCardNote();
         syncCheckoutSummary();
         openModal();
@@ -1675,6 +2285,7 @@
         processing.classList.add("is-active");
         confirmBtn.disabled = true;
         actionInput.value = "buy";
+        runPhysicalWalletTransfer(tokens);
 
         const selectedCard = document.querySelector('.investor-opportunity-card.is-selected') || opportunityCards[0];
         window.dispatchEvent(new CustomEvent("agrotech-ledger-record", {
@@ -1694,7 +2305,7 @@
 
         window.setTimeout(function () {
           form.submit();
-        }, 1650);
+        }, 2300);
       };
 
       openBtn.addEventListener("click", handleOpenCheckout);
