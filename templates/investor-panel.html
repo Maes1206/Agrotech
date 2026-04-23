@@ -9,7 +9,7 @@
 <link href="{% static 'css/bootstrap.css' %}" rel="stylesheet">
 <link href="{% static 'css/style.css' %}" rel="stylesheet">
 <link href="{% static 'css/responsive.css' %}" rel="stylesheet">
-<link href="{% static 'css/investor-panel.css' %}?v=20260421-9" rel="stylesheet">
+<link href="{% static 'css/investor-panel.css' %}?v=20260422-12" rel="stylesheet">
 <link href="{% static 'css/agrotech-investment.css' %}?v=20260418-1" rel="stylesheet">
 </head>
 <body>
@@ -245,7 +245,7 @@
               </div>
             </div>
 
-            <section class="physical-wallet-panel is-empty" data-physical-wallet data-stored-tokens="0" aria-label="Wallet física AGT">
+            <section class="physical-wallet-panel is-empty" data-physical-wallet data-stored-tokens="{{ wallet_snapshot.physical_tokens|default:0 }}" aria-label="Wallet física AGT">
               <div class="physical-wallet-panel__transfer-line" aria-hidden="true">
                 <span></span>
                 <span></span>
@@ -293,7 +293,7 @@
                     <strong data-physical-wallet-status>Lista para recibir AGT</strong>
                   </div>
                 </div>
-                <div class="physical-wallet-nfc" data-wallet-nfc data-nfc-payload-url="" data-nfc-validate-url="" data-nfc-state="idle">
+                <div class="physical-wallet-nfc" data-wallet-nfc data-nfc-payload-url="{% url 'wallet_nfc_payload' %}" data-nfc-validate-url="{% url 'wallet_nfc_sync' %}" data-nfc-state="idle">
                   <div class="physical-wallet-nfc__head">
                     <span>NFC wallet física</span>
                     <strong data-nfc-status>NFC verificando...</strong>
@@ -814,10 +814,9 @@
       const track = document.querySelector("[data-opportunities-carousel]");
       const prev = document.querySelector("[data-carousel-prev]");
       const next = document.querySelector("[data-carousel-next]");
+      const responsiveAccordionQuery = window.matchMedia("(max-width: 767px)");
 
       if (track && prev && next) {
-        const isTouchCarousel = window.matchMedia("(max-width: 767px), (pointer: coarse)").matches;
-
         const getStep = () => {
           const firstCard = track.querySelector(".investor-opportunity-card");
           if (!firstCard) {
@@ -835,53 +834,68 @@
           track.scrollBy({ left: getStep(), behavior: "smooth" });
         });
 
-        if (!isTouchCarousel) {
-          let isPointerDown = false;
-          let dragStartX = 0;
-          let dragStartScroll = 0;
-          let draggedDistance = 0;
-          let suppressCardClick = false;
+        let isPointerDown = false;
+        let isHorizontalDrag = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let dragStartScroll = 0;
+        let draggedDistance = 0;
+        let suppressCardClick = false;
 
-          const endDrag = function () {
-            isPointerDown = false;
-            track.classList.remove("is-dragging");
-            window.setTimeout(function () {
-              suppressCardClick = false;
-            }, 0);
-          };
-
-          track.addEventListener("pointerdown", function (event) {
-            isPointerDown = true;
-            dragStartX = event.clientX;
-            dragStartScroll = track.scrollLeft;
-            draggedDistance = 0;
+        const endDrag = function () {
+          isPointerDown = false;
+          isHorizontalDrag = false;
+          track.classList.remove("is-dragging");
+          window.setTimeout(function () {
             suppressCardClick = false;
+          }, 0);
+        };
+
+        track.addEventListener("pointerdown", function (event) {
+          if (event.button !== undefined && event.button !== 0) {
+            return;
+          }
+          isPointerDown = true;
+          isHorizontalDrag = false;
+          dragStartX = event.clientX;
+          dragStartY = event.clientY;
+          dragStartScroll = track.scrollLeft;
+          draggedDistance = 0;
+          suppressCardClick = false;
+        });
+
+        track.addEventListener("pointermove", function (event) {
+          if (!isPointerDown) {
+            return;
+          }
+          const deltaX = event.clientX - dragStartX;
+          const deltaY = event.clientY - dragStartY;
+          draggedDistance = Math.max(draggedDistance, Math.abs(deltaX));
+          if (!isHorizontalDrag && Math.abs(deltaX) > 8 && Math.abs(deltaX) > Math.abs(deltaY) + 4) {
+            isHorizontalDrag = true;
+            suppressCardClick = true;
             track.classList.add("is-dragging");
-          });
+            if (track.setPointerCapture && event.pointerId !== undefined) {
+              track.setPointerCapture(event.pointerId);
+            }
+          }
+          if (!isHorizontalDrag) {
+            return;
+          }
+          event.preventDefault();
+          track.scrollLeft = dragStartScroll - deltaX;
+        });
 
-          track.addEventListener("pointermove", function (event) {
-            if (!isPointerDown) {
-              return;
-            }
-            const delta = event.clientX - dragStartX;
-            draggedDistance = Math.max(draggedDistance, Math.abs(delta));
-            if (draggedDistance > 8) {
-              suppressCardClick = true;
-            }
-            track.scrollLeft = dragStartScroll - delta;
-          });
-
-          track.addEventListener("pointerup", endDrag);
-          track.addEventListener("pointerleave", endDrag);
-          track.addEventListener("pointercancel", endDrag);
-          track.addEventListener("click", function (event) {
-            if (!suppressCardClick) {
-              return;
-            }
-            event.preventDefault();
-            event.stopPropagation();
-          }, true);
-        }
+        track.addEventListener("pointerup", endDrag);
+        track.addEventListener("pointerleave", endDrag);
+        track.addEventListener("pointercancel", endDrag);
+        track.addEventListener("click", function (event) {
+          if (!suppressCardClick) {
+            return;
+          }
+          event.preventDefault();
+          event.stopPropagation();
+        }, true);
 
         const opportunityCards = Array.from(track.querySelectorAll(".investor-opportunity-card"));
 
@@ -907,6 +921,82 @@
             card.classList.add("is-visible");
           });
         }
+      }
+
+      const responsiveAccordionPanels = Array.from(document.querySelectorAll(
+        ".investor-summary-card, .investor-asset-portfolio, .agt-contract-card"
+      ));
+
+      const getResponsiveAccordionTrigger = function (panel) {
+        return panel.querySelector(":scope > h4, :scope > .investor-asset-portfolio__head, :scope > .agt-contract-card__head");
+      };
+
+      const setResponsiveAccordionExpanded = function (panel, expanded) {
+        const trigger = getResponsiveAccordionTrigger(panel);
+        panel.classList.toggle("is-expanded", expanded);
+        panel.classList.toggle("is-collapsed", !expanded);
+        if (trigger) {
+          trigger.setAttribute("aria-expanded", expanded ? "true" : "false");
+        }
+      };
+
+      responsiveAccordionPanels.forEach(function (panel) {
+        const trigger = getResponsiveAccordionTrigger(panel);
+        if (!trigger) {
+          return;
+        }
+
+        panel.classList.add("responsive-accordion");
+        panel.dataset.responsiveAccordion = "true";
+        trigger.classList.add("responsive-accordion__trigger");
+        trigger.setAttribute("role", "button");
+        trigger.setAttribute("tabindex", "0");
+        trigger.setAttribute("aria-expanded", "false");
+
+        trigger.addEventListener("click", function () {
+          if (!responsiveAccordionQuery.matches) {
+            return;
+          }
+          setResponsiveAccordionExpanded(panel, panel.classList.contains("is-collapsed"));
+        });
+
+        trigger.addEventListener("keydown", function (event) {
+          if (!responsiveAccordionQuery.matches || (event.key !== "Enter" && event.key !== " ")) {
+            return;
+          }
+          event.preventDefault();
+          setResponsiveAccordionExpanded(panel, panel.classList.contains("is-collapsed"));
+        });
+
+        setResponsiveAccordionExpanded(panel, false);
+      });
+
+      const syncResponsiveAccordions = function () {
+        responsiveAccordionPanels.forEach(function (panel) {
+          const trigger = getResponsiveAccordionTrigger(panel);
+          if (!trigger) {
+            return;
+          }
+          if (!responsiveAccordionQuery.matches) {
+            panel.classList.remove("is-collapsed", "is-expanded");
+            trigger.removeAttribute("role");
+            trigger.removeAttribute("tabindex");
+            trigger.setAttribute("aria-expanded", "true");
+            return;
+          }
+          trigger.setAttribute("role", "button");
+          trigger.setAttribute("tabindex", "0");
+          if (!panel.classList.contains("is-expanded") && !panel.classList.contains("is-collapsed")) {
+            setResponsiveAccordionExpanded(panel, false);
+          }
+        });
+      };
+
+      syncResponsiveAccordions();
+      if (responsiveAccordionQuery.addEventListener) {
+        responsiveAccordionQuery.addEventListener("change", syncResponsiveAccordions);
+      } else if (responsiveAccordionQuery.addListener) {
+        responsiveAccordionQuery.addListener(syncResponsiveAccordions);
       }
 
       const selectedAssetCodeInput = document.getElementById("selected-asset-code-input");
@@ -1150,6 +1240,7 @@
       let walletNfcAbortController = null;
       let walletNfcActive = false;
       let walletNfcLastPayload = null;
+      const walletNfcMaxWritableBytes = 120;
       const serverLinkedCard = wallet ? {
         holder: wallet.dataset.linkedHolder || "",
         last4: wallet.dataset.linkedLast4 || ""
@@ -1216,19 +1307,19 @@
 
       const revealPhysicalWalletCustodySummary = function (payload) {
         if (!physicalWalletCustodySummary) {
-          return;
+          return null;
         }
 
-        const safePayload = payload && payload.json ? payload.json : payload;
-        const storedFromNfc = safePayload && Number.isFinite(parseInt(safePayload.storedTokens || safePayload.tokensToTransfer || safePayload.tokens || "0", 10))
-          ? Math.max(parseInt(safePayload.storedTokens || safePayload.tokensToTransfer || safePayload.tokens || "0", 10) || 0, 0)
-          : 0;
-        if (storedFromNfc > 0) {
-          physicalWalletStoredTokens = storedFromNfc;
-          physicalWallet.dataset.storedTokens = String(physicalWalletStoredTokens);
+        const storedFromNfc = getStoredTokensFromPayload(payload);
+        if (storedFromNfc !== null) {
+          syncPhysicalWalletStoredTokens(storedFromNfc);
         }
         physicalWalletCustodySummary.hidden = false;
-        syncPhysicalWalletDetail("Lectura NFC validada en esta wallet física.", "Wallet leída correctamente");
+        syncPhysicalWalletDetail(
+          storedFromNfc !== null ? formatStoredTokensMessage(storedFromNfc) : "Lectura NFC validada en esta wallet física.",
+          "Wallet leída correctamente"
+        );
+        return storedFromNfc;
       };
 
       const renderPhysicalWallet = function (stage, payload) {
@@ -1310,6 +1401,9 @@
         }
         if (name === "NotReadableError") {
           return "No se pudo leer la wallet. Verifica que NFC esté activo y acerca de nuevo la tarjeta.";
+        }
+        if (name === "NetworkError") {
+          return "No se pudo escribir en la tarjeta NFC. Mantén la tarjeta quieta, verifica que no esté bloqueada y usa una tarjeta NDEF con memoria suficiente.";
         }
         if (name === "AbortError") {
           return "Operación NFC cancelada.";
@@ -1399,9 +1493,65 @@
         return text || fallback || "";
       }
 
+      function parseWalletTokenCount(value) {
+        const match = String(value || "").match(/[0-9.,]+/);
+        const digits = match ? match[0].replace(/[^\d]/g, "") : "";
+        return digits ? Math.max(parseInt(digits, 10) || 0, 0) : 0;
+      }
+
+      function getStoredTokensFromPayload(payload) {
+        const safePayload = payload && payload.json ? payload.json : payload;
+        if (!safePayload) {
+          return null;
+        }
+
+        const directKeys = ["walletTokens", "storedTokens", "stored", "tokens", "tokensToTransfer"];
+        for (let index = 0; index < directKeys.length; index += 1) {
+          const key = directKeys[index];
+          if (Object.prototype.hasOwnProperty.call(safePayload, key)) {
+            return Math.max(parseInt(safePayload[key] || "0", 10) || 0, 0);
+          }
+        }
+
+        if (safePayload.text) {
+          return parseWalletTokenCount(safePayload.text);
+        }
+
+        return null;
+      }
+
+      function formatStoredTokensMessage(tokens) {
+        const safeTokens = Math.max(parseInt(tokens || "0", 10) || 0, 0);
+        return safeTokens + " AGT guardados en esta wallet física.";
+      }
+
+      function getWalletAvailableTokens() {
+        const investmentRoot = document.querySelector("[data-investment-root]");
+        if (investmentRoot && investmentRoot.dataset.walletTokens !== undefined) {
+          return parseWalletTokenCount(investmentRoot.dataset.walletTokens);
+        }
+        const walletPocketTokens = document.querySelector("[data-wallet-pocket-tokens]");
+        if (walletPocketTokens) {
+          return parseWalletTokenCount(walletPocketTokens.textContent);
+        }
+        return physicalWalletStoredTokens;
+      }
+
+      function syncPhysicalWalletStoredTokens(tokens) {
+        const safeTokens = Math.max(parseInt(tokens || "0", 10) || 0, 0);
+        physicalWalletStoredTokens = safeTokens;
+        if (physicalWallet) {
+          physicalWallet.dataset.storedTokens = String(safeTokens);
+        }
+        if (physicalWalletStage !== "validating" && physicalWalletStage !== "transferring") {
+          renderPhysicalWallet(safeTokens > 0 ? "success" : "empty");
+        }
+      }
+
       function buildWalletNfcPayload() {
         const selectedCard = document.querySelector(".investor-opportunity-card.is-selected") || opportunityCards[0];
         const quote = quoteState && quoteState.quote ? quoteState.quote : calculateQuote(getBtcAmount());
+        const walletTokens = getWalletAvailableTokens();
         return {
           app: "AgroTech",
           type: "agt_physical_wallet",
@@ -1410,7 +1560,8 @@
           assetCode: selectedCard ? selectedCard.dataset.assetCode : (selectedAssetCodeInput ? selectedAssetCodeInput.value : ""),
           assetName: selectedCard ? selectedCard.dataset.assetName : (checkoutAssetName ? checkoutAssetName.textContent.trim() : "Activo AgroTech"),
           tokensToTransfer: Math.max(parseInt(quote.estimatedTokens || "0", 10) || 0, 0),
-          storedTokens: physicalWalletStoredTokens,
+          walletTokens: walletTokens,
+          storedTokens: walletTokens,
           btcAmount: quote.btcAmount,
           equivalentUsd: quote.equivalentUsd,
           equivalentCop: quote.equivalentCop,
@@ -1423,6 +1574,52 @@
           },
           issuedAt: new Date().toISOString()
         };
+      }
+
+      function getWalletNfcByteLength(value) {
+        try {
+          return new TextEncoder().encode(String(value || "")).length;
+        } catch (error) {
+          return String(value || "").length;
+        }
+      }
+
+      function buildWritableWalletNfcPayload(payload) {
+        const safePayload = payload || {};
+        const blockchain = safePayload.blockchain || {};
+        const walletTokens = Math.max(parseInt(safePayload.walletTokens || "0", 10) || 0, 0);
+        const tokensToTransfer = Math.max(parseInt(safePayload.tokensToTransfer || safePayload.tokens || "0", 10) || 0, 0);
+        const storedTokens = Math.max(parseInt(safePayload.storedTokens || safePayload.stored || "0", 10) || 0, 0);
+        const tokensForWallet = walletTokens || storedTokens || tokensToTransfer;
+        const compactPayload = {
+          app: "AGT",
+          type: "wallet",
+          v: safePayload.version || 1,
+          asset: String(safePayload.assetCode || safePayload.asset || "").slice(0, 24),
+          tokens: tokensForWallet,
+          stored: tokensForWallet,
+          tx: String(blockchain.txHash && blockchain.txHash !== "-" ? blockchain.txHash : "").slice(0, 32),
+          ts: Date.now()
+        };
+        const compactText = JSON.stringify(compactPayload);
+        if (getWalletNfcByteLength(compactText) <= walletNfcMaxWritableBytes) {
+          return compactPayload;
+        }
+        return {
+          app: "AGT",
+          tokens: compactPayload.tokens
+        };
+      }
+
+      function stopWalletNfcScan() {
+        if (walletNfcReader) {
+          walletNfcReader.onreading = null;
+          walletNfcReader.onreadingerror = null;
+        }
+        if (walletNfcAbortController) {
+          walletNfcAbortController.abort();
+          walletNfcAbortController = null;
+        }
       }
 
       async function fetchWalletNfcPayload() {
@@ -1440,16 +1637,16 @@
         if (!response.ok) {
           throw new Error("No se pudo obtener el payload NFC desde Django.");
         }
-        return response.json();
+        const data = await response.json();
+        return data && data.payload ? data.payload : data;
       }
 
-      async function validateWalletNfcPayload(parsedPayload) {
+      async function syncWalletNfcPayload(payload, operation, serialNumber) {
         const endpoint = walletNfc ? walletNfc.dataset.nfcValidateUrl : "";
         if (!endpoint) {
           return null;
         }
 
-        // Hook opcional: validar contra Django el contenido leído desde la wallet física.
         const response = await fetch(endpoint, {
           method: "POST",
           headers: {
@@ -1457,12 +1654,20 @@
             "Content-Type": "application/json",
             "X-CSRFToken": getCsrfToken()
           },
-          body: JSON.stringify({ payload: parsedPayload })
+          body: JSON.stringify({
+            operation: operation || "read",
+            payload: payload,
+            serialNumber: serialNumber || ""
+          })
         });
         if (!response.ok) {
-          throw new Error("La validación NFC del backend no fue exitosa.");
+          throw new Error("La sincronización NFC del backend no fue exitosa.");
         }
         return response.json();
+      }
+
+      async function validateWalletNfcPayload(parsedPayload) {
+        return syncWalletNfcPayload(parsedPayload, "read", parsedPayload ? parsedPayload.serialNumber : "");
       }
 
       function parseNdefMessage(message) {
@@ -1539,14 +1744,13 @@
 
         updateWalletNfcUI("reading");
         try {
-          if (walletNfcAbortController) {
-            walletNfcAbortController.abort();
-          }
+          stopWalletNfcScan();
           walletNfcAbortController = new AbortController();
           walletNfcReader = new NDEFReader();
           walletNfcReader.onreading = async function (event) {
             try {
               const parsed = parseNdefMessage(event.message);
+              parsed.serialNumber = event.serialNumber || "";
               walletNfcLastPayload = parsed.json || parsed.text || parsed;
               if (walletNfcAbortController) {
                 walletNfcAbortController.abort();
@@ -1554,11 +1758,13 @@
               }
 
               const validation = await validateWalletNfcPayload(parsed);
-              revealPhysicalWalletCustodySummary(parsed);
+              const storedTokens = revealPhysicalWalletCustodySummary(parsed);
               updateWalletNfcUI("success", {
                 status: "Wallet leída correctamente",
-                message: validation ? "Wallet leída y validada correctamente." : "Wallet leída correctamente.",
-                result: validation ? { lectura: parsed, validacion: validation } : parsed
+                message: storedTokens !== null
+                  ? formatStoredTokensMessage(storedTokens)
+                  : (validation ? "Wallet leída y validada correctamente." : "Wallet leída correctamente."),
+                result: storedTokens !== null ? "Tokens guardados: " + storedTokens + " AGT" : parsed
               });
             } catch (error) {
               updateWalletNfcUI("error", {
@@ -1592,21 +1798,26 @@
 
         updateWalletNfcUI("writing");
         try {
-          const nfcPayload = payload || await fetchWalletNfcPayload();
-          const encodedPayload = new TextEncoder().encode(JSON.stringify(nfcPayload));
+          stopWalletNfcScan();
+          syncPhysicalWalletStoredTokens(getWalletAvailableTokens());
+          const payloadEndpoint = walletNfc ? walletNfc.dataset.nfcPayloadUrl : "";
+          const sourcePayload = payload || (payloadEndpoint ? await fetchWalletNfcPayload() : buildWalletNfcPayload());
+          const nfcPayload = buildWritableWalletNfcPayload(sourcePayload);
+          const encodedPayload = JSON.stringify(nfcPayload);
           const writer = new NDEFReader();
           await writer.write({
             records: [{
-              recordType: "mime",
-              mediaType: "application/json",
-              data: encodedPayload
+              recordType: "text",
+              data: encodedPayload,
+              lang: "es"
             }]
           });
+          const syncResult = await syncWalletNfcPayload(nfcPayload, "write");
           walletNfcLastPayload = nfcPayload;
           updateWalletNfcUI("success", {
             status: "Datos escritos correctamente",
-            message: "Datos escritos correctamente en la wallet física AGT.",
-            payload: nfcPayload
+            message: "Datos escritos correctamente en la wallet física AGT y guardados en base de datos.",
+            payload: syncResult ? { tarjeta: nfcPayload, base_datos: syncResult.state } : nfcPayload
           });
         } catch (error) {
           updateWalletNfcUI("error", {

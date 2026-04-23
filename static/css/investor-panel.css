@@ -2353,6 +2353,17 @@ body {
     }
 }
 
+@keyframes responsiveAccordionDown {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 .investor-asset-portfolio {
     margin-top: 34px;
     padding: 30px;
@@ -2912,6 +2923,65 @@ body {
         border-radius: 24px;
     }
 
+    .responsive-accordion {
+        overflow: hidden;
+    }
+
+    .responsive-accordion + .responsive-accordion,
+    .agt-contracts-section .row > [class*="col-"] + [class*="col-"] {
+        margin-top: 22px;
+    }
+
+    .investor-card > .row.mt-4 > [class*="col-"] + [class*="col-"] {
+        margin-top: 32px;
+    }
+
+    .investor-card > .row.mt-4 > [class*="col-"]:nth-child(2) > .investor-table-card {
+        margin-top: 18px;
+    }
+
+    .responsive-accordion__trigger {
+        position: relative;
+        width: 100%;
+        min-height: 44px;
+        padding-right: 48px;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .responsive-accordion__trigger::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        right: 4px;
+        width: 14px;
+        height: 14px;
+        border-right: 3px solid #1f6b38;
+        border-bottom: 3px solid #1f6b38;
+        transform: translateY(-68%) rotate(45deg);
+        transition: transform .2s ease;
+    }
+
+    .responsive-accordion.is-expanded > .responsive-accordion__trigger {
+        margin-bottom: 18px;
+    }
+
+    .responsive-accordion.is-collapsed > .responsive-accordion__trigger {
+        margin-bottom: 0 !important;
+    }
+
+    .responsive-accordion.is-expanded > .responsive-accordion__trigger::after {
+        transform: translateY(-28%) rotate(225deg);
+    }
+
+    .responsive-accordion.is-collapsed > :not(.responsive-accordion__trigger) {
+        display: none !important;
+    }
+
+    .responsive-accordion.is-expanded > :not(.responsive-accordion__trigger) {
+        animation: responsiveAccordionDown .22s ease both;
+    }
+
     .investor-card {
         padding: 22px 16px;
     }
@@ -2971,6 +3041,12 @@ body {
         line-height: 1.55;
     }
 
+    #open-checkout-btn {
+        width: min(100%, 280px);
+        min-width: 0;
+        padding-inline: 24px;
+    }
+
     .investor-metric--tokens .investor-token-metric__coin {
         width: 26px;
         height: 26px;
@@ -3002,6 +3078,10 @@ body {
 
     .investor-wallet-panel {
         padding: 18px 14px 20px;
+    }
+
+    .investor-wallet-panel__head {
+        margin-bottom: 24px;
     }
 
     .investor-wallet-panel__head h4 {
@@ -3040,6 +3120,25 @@ body {
     .stripe,
     .bancolombia {
         bottom: 64px;
+    }
+
+    .wallet:hover .stripe,
+    .wallet.is-active .stripe {
+        transform: translateX(-50%) translateY(-30px) rotate(-3deg);
+    }
+
+    .wallet:hover .stripe:hover,
+    .wallet.is-active .stripe.is-active {
+        transform: translateX(-50%) translateY(-24px) scale(1.02) rotate(0);
+    }
+
+    .wallet-card-bottom {
+        display: flex;
+        justify-content: flex-start;
+    }
+
+    .wallet-card-bottom .card-number-wrapper {
+        display: none;
     }
 
     .wallet-empty-state {
@@ -3091,6 +3190,12 @@ body {
 
     .wallet-balance-tokens {
         font-size: 10px;
+    }
+
+    .wallet-balance-label {
+        position: relative;
+        top: 25px;
+        margin-top: 0;
     }
 
     .wallet::after {
@@ -3300,6 +3405,7 @@ body {
         scroll-behavior: auto;
         -webkit-overflow-scrolling: touch;
         overscroll-behavior-x: contain;
+        touch-action: pan-y pinch-zoom;
     }
 
     .investor-opportunities__track.is-dragging {
@@ -3434,6 +3540,10 @@ body {
 
     .investor-wallet-panel__head h4 {
         font-size: 18px;
+    }
+
+    .investor-wallet-panel__head {
+        margin-bottom: 30px;
     }
 
     .wallet {

@@ -2,6 +2,7 @@ import json
 from decimal import Decimal, ROUND_DOWN
 import hashlib
 import math
+import re
 
 from django.conf import settings
 from django.contrib import messages
@@ -431,6 +432,8 @@ def _build_wallet_snapshot(user, portfolio=None, transactions=None):
     return {
         "wallet": wallet,
         "tokens_available": wallet.agt_balance,
+        "physical_tokens": wallet.physical_agt_balance,
+        "physical_wallet_synced_at": wallet.physical_wallet_synced_at,
         "equivalent_cop": Decimal(wallet.equivalent_cop),
         "equivalent_cop_compact": _format_compact_millions(wallet.equivalent_cop),
         "portfolio_assets": len(portfolio_items),
@@ -533,11 +536,58 @@ def _build_asset_snapshot(tokenized_asset, user=None, holding_quantity=None, tot
 def _serialize_wallet_snapshot(snapshot):
     return {
         "tokens_available": snapshot["tokens_available"],
+        "physical_tokens": snapshot["physical_tokens"],
+        "physical_wallet_synced_at": (
+            snapshot["physical_wallet_synced_at"].isoformat()
+            if snapshot["physical_wallet_synced_at"]
+            else None
+        ),
         "equivalent_cop": f"{snapshot['equivalent_cop']:.0f}",
         "portfolio_assets": snapshot["portfolio_assets"],
         "total_invested": f"{snapshot['total_invested']:.0f}",
         "portfolio_value": f"{snapshot['portfolio_value']:.0f}",
         "estimated_return_pct": f"{snapshot['estimated_return_pct']:.2f}",
+    }
+
+
+def _extract_wallet_nfc_payload_tokens(payload):
+    if not isinstance(payload, dict):
+        return 0
+
+    payload_data = payload.get("json") if isinstance(payload.get("json"), dict) else payload
+    for key in ("walletTokens", "storedTokens", "stored", "tokens", "tokensToTransfer"):
+        if key in payload_data:
+            try:
+                return max(int(payload_data.get(key) or 0), 0)
+            except (TypeError, ValueError):
+                return 0
+    text_value = str(payload.get("text") or payload_data.get("text") or "")
+    text_match = re.search(r"\d+", text_value)
+    if text_match:
+        return max(int(text_match.group(0)), 0)
+    return 0
+
+
+def _build_wallet_nfc_payload(wallet):
+    stored_tokens = wallet.physical_agt_balance or wallet.agt_balance
+    return {
+        "app": "AGT",
+        "type": "wallet",
+        "version": 1,
+        "walletTokens": wallet.agt_balance,
+        "storedTokens": stored_tokens,
+        "tokens": stored_tokens,
+        "syncedAt": timezone.now().isoformat(),
+    }
+
+
+def _serialize_wallet_nfc_state(wallet):
+    return {
+        "wallet_tokens": wallet.agt_balance,
+        "physical_tokens": wallet.physical_agt_balance,
+        "last_uid": wallet.physical_wallet_last_uid,
+        "synced_at": wallet.physical_wallet_synced_at.isoformat() if wallet.physical_wallet_synced_at else None,
+        "payload": wallet.physical_wallet_payload,
     }
 
 
@@ -927,6 +977,57 @@ def invest_asset_tokens(request, code):
         },
     }
     return JsonResponse(response)
+
+
+@login_required
+def wallet_nfc_payload(request):
+    wallet = ensure_wallet(request.user)
+    return JsonResponse(
+        {
+            "success": True,
+            "payload": _build_wallet_nfc_payload(wallet),
+            "state": _serialize_wallet_nfc_state(wallet),
+        }
+    )
+
+
+@login_required
+@require_POST
+def wallet_nfc_sync(request):
+    try:
+        body = json.loads(request.body.decode("utf-8") or "{}")
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({"success": False, "message": "Solicitud NFC invalida."}, status=400)
+
+    operation = str(body.get("operation", "read") or "read").strip().lower()
+    payload = body.get("payload") if isinstance(body.get("payload"), dict) else {}
+    serial_number = str(body.get("serialNumber", "") or "").strip()[:120]
+    tokens = _extract_wallet_nfc_payload_tokens(payload)
+
+    wallet = ensure_wallet(request.user)
+    wallet.physical_agt_balance = tokens
+    wallet.physical_wallet_payload = payload
+    wallet.physical_wallet_last_uid = serial_number
+    wallet.physical_wallet_synced_at = timezone.now()
+    wallet.save(
+        update_fields=[
+            "physical_agt_balance",
+            "physical_wallet_payload",
+            "physical_wallet_last_uid",
+            "physical_wallet_synced_at",
+            "updated_at",
+        ]
+    )
+
+    return JsonResponse(
+        {
+            "success": True,
+            "message": "Wallet fisica sincronizada en base de datos.",
+            "operation": operation,
+            "tokens": tokens,
+            "state": _serialize_wallet_nfc_state(wallet),
+        }
+    )
 
 
 @login_required

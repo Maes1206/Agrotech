@@ -421,6 +421,10 @@ class Wallet(TimeStampedModel):
         related_name="wallet",
     )
     agt_balance = models.PositiveIntegerField(default=0)
+    physical_agt_balance = models.PositiveIntegerField(default=0)
+    physical_wallet_payload = models.JSONField(default=dict, blank=True)
+    physical_wallet_last_uid = models.CharField(max_length=120, blank=True)
+    physical_wallet_synced_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "agro_wallet"
