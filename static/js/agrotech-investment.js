@@ -1,5 +1,5 @@
 (function () {
-  const TOKEN_FACE_VALUE_COP = 100000;
+  const TOKEN_FACE_VALUE_COP = 500000;
   const copCurrencyFormatter = new Intl.NumberFormat("es-CO", {
     style: "currency",
     currency: "COP",
@@ -926,7 +926,7 @@
       modal.querySelector("[data-invest-total-cop]").textContent = formatCurrency(totalCop);
       modal.querySelector("[data-invest-participation]").textContent = participation + "%";
       modal.querySelector("[data-invest-estimated-return]").textContent = estimatedReturn.toFixed(2) + "%";
-      modal.querySelector("[data-invest-remaining-wallet]").textContent = Math.max(walletTokens - quantity, 0) + " tokens";
+      modal.querySelector("[data-invest-remaining-wallet]").textContent = Math.max(walletTokens - quantity, 0);
       return true;
     }
 

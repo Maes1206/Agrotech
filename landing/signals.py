@@ -2,8 +2,6 @@ from django.contrib.auth.signals import user_logged_in, user_logged_out, user_lo
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from django.conf import settings
-
 from .models import LoginAudit, User, UserProfile, UserRole, Wallet
 
 
@@ -20,7 +18,7 @@ def _get_client_ip(request):
 def ensure_profile_exists(sender, instance, created, **kwargs):
     if created:
         UserProfile.objects.create(user=instance, document=f"PENDING-{instance.pk}")
-        Wallet.objects.create(user=instance, agt_balance=settings.AGROTECH_DEMO_WALLET_TOKENS)
+        Wallet.objects.create(user=instance)
 
 
 @receiver(post_save, sender=UserProfile)

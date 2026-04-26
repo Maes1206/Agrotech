@@ -16,8 +16,8 @@ from .models import (
     UserProfile,
     Wallet,
 )
-from .services import buy_tokens
-from .views import _build_asset_snapshot, _build_token_market_metrics
+from .services import buy_tokens, ensure_wallet
+from .views import _build_asset_snapshot, _build_investor_quote, _build_token_market_metrics, _get_effective_token_state
 
 
 class BuyTokensServiceTests(TestCase):
@@ -130,7 +130,98 @@ class AuthenticationFlowTests(TestCase):
         user = User.objects.get(email="laura@agrotech.demo")
         self.assertEqual(user.first_name, "Laura")
         self.assertTrue(UserProfile.objects.filter(user=user, status=UserProfile.ACTIVE).exists())
+        self.assertEqual(Wallet.objects.get(user=user).agt_balance, 0)
         self.assertEqual(int(self.client.session["_auth_user_id"]), user.id)
+
+    def test_legacy_unmodified_demo_wallet_balance_is_reset_to_zero(self):
+        user = User.objects.create_user(
+            username="legacywallet",
+            email="legacy-wallet@agrotech.demo",
+            password="ClaveSegura123*",
+        )
+        wallet = Wallet.objects.get(user=user)
+        Wallet.objects.filter(pk=wallet.pk).update(
+            agt_balance=23,
+            updated_at=wallet.created_at,
+        )
+
+        wallet = ensure_wallet(user)
+
+        self.assertEqual(wallet.agt_balance, 0)
+
+    def test_register_rejects_weak_password_with_visible_error(self):
+        response = self.client.post(
+            reverse("home"),
+            data={
+                "auth_mode": "register",
+                "name": "Laura Perez",
+                "email": "weak@agrotech.demo",
+                "password": "123456",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(User.objects.filter(email="weak@agrotech.demo").exists())
+        self.assertContains(response, "No pudimos crear la cuenta")
+        self.assertContains(response, "La contrasena debe tener al menos 8 caracteres.")
+
+    def test_register_rejects_duplicate_email_with_visible_error(self):
+        User.objects.create_user(
+            username="existing",
+            email="existente@agrotech.demo",
+            password="ClaveSegura123*",
+        )
+
+        response = self.client.post(
+            reverse("home"),
+            data={
+                "auth_mode": "register",
+                "name": "Laura Perez",
+                "email": "existente@agrotech.demo",
+                "password": "ClaveSegura123*",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(User.objects.filter(email="existente@agrotech.demo").count(), 1)
+        self.assertContains(response, "Ya existe una cuenta registrada con este correo.")
+
+    def test_ajax_register_keeps_user_on_current_view(self):
+        response = self.client.post(
+            reverse("home"),
+            data={
+                "auth_mode": "register",
+                "name": "Laura Perez",
+                "email": "ajax-laura@agrotech.demo",
+                "password": "ClaveSegura123*",
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["success"])
+        self.assertEqual(payload["redirect_url"], reverse("investor_panel"))
+        self.assertTrue(User.objects.filter(email="ajax-laura@agrotech.demo").exists())
+
+    def test_ajax_register_validation_returns_json_errors(self):
+        response = self.client.post(
+            reverse("home"),
+            data={
+                "auth_mode": "register",
+                "name": "Laura",
+                "email": "correo-invalido",
+                "password": "123456",
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        payload = response.json()
+        self.assertFalse(payload["success"])
+        self.assertIn("name", payload["errors"])
+        self.assertIn("email", payload["errors"])
+        self.assertIn("password", payload["errors"])
 
     def test_login_with_email_and_password(self):
         user = User.objects.create_user(
@@ -227,7 +318,7 @@ class InvestorPanelTests(TestCase):
             asset=self.secondary_asset,
             total_tokens=80,
             tokens_available=80,
-            token_price=Decimal("450000.00"),
+            token_price=Decimal("500000.00"),
         )
 
     def test_investor_panel_requires_login(self):
@@ -243,6 +334,23 @@ class InvestorPanelTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["calculation"]["estimated_tokens"], 26)
+
+    def test_investor_quote_uses_token_price_for_display_equivalences(self):
+        quote = _build_investor_quote(Decimal("0.002530"), self.tokenized_asset)
+
+        self.assertEqual(quote["estimated_tokens"], 1)
+        self.assertEqual(quote["equivalent_cop"], Decimal("500000.00"))
+        self.assertEqual(quote["equivalent_usd"], Decimal("139.33"))
+        self.assertEqual(quote["spendable_btc"], Decimal("0.001880"))
+        self.assertEqual(quote["spendable_cop"], Decimal("500000.00"))
+        self.assertEqual(quote["raw_equivalent_cop"], Decimal("672739.85"))
+
+    def test_token_market_metrics_default_to_fixed_agt_price(self):
+        metrics = _build_token_market_metrics(total_tokens=2, tokens_sold=1)
+
+        self.assertEqual(metrics["token_face_value_cop"], Decimal("500000"))
+        self.assertEqual(metrics["capital_available"], Decimal("500000"))
+        self.assertEqual(metrics["capital_raised"], Decimal("500000"))
 
     def test_token_market_metrics_use_asset_token_price(self):
         metrics = _build_token_market_metrics(
@@ -270,8 +378,8 @@ class InvestorPanelTests(TestCase):
         response = self.client.get(reverse("investor_panel"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'data-capital-available="10000000"')
-        self.assertContains(response, "$10.000.000 COP")
+        self.assertContains(response, 'data-capital-available="50000000"')
+        self.assertContains(response, "$50.000.000 COP")
 
     def test_investor_panel_buy_recharges_wallet_without_updating_portfolio(self):
         self.client.login(username="paneluser", password="ClaveSegura123*")
@@ -339,8 +447,11 @@ class InvestorPanelTests(TestCase):
         self.assertContains(response, "**** **** **** 4242")
         self.assertNotContains(response, 'class="wallet wallet--empty"')
 
-    def test_investor_panel_keeps_wallet_visible_when_demo_balance_exists_without_session_card(self):
+    def test_investor_panel_keeps_wallet_visible_when_balance_exists_without_session_card(self):
         self.client.login(username="paneluser", password="ClaveSegura123*")
+        wallet = Wallet.objects.get(user=self.user)
+        wallet.agt_balance = 23
+        wallet.save(update_fields=["agt_balance", "updated_at"])
 
         response = self.client.get(reverse("investor_panel"))
 
@@ -349,16 +460,14 @@ class InvestorPanelTests(TestCase):
         self.assertNotContains(response, 'class="wallet wallet--empty"')
         self.assertContains(response, "23 AGT")
 
-    def test_investor_panel_shows_empty_wallet_only_when_balance_and_linked_card_are_missing(self):
+    def test_investor_panel_shows_empty_wallet_for_new_account_without_balance_or_linked_card(self):
         self.client.login(username="paneluser", password="ClaveSegura123*")
-        wallet = Wallet.objects.get(user=self.user)
-        wallet.agt_balance = 0
-        wallet.save(update_fields=["agt_balance", "updated_at"])
 
         response = self.client.get(reverse("investor_panel"))
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'class="wallet wallet--empty"')
+        self.assertContains(response, "0 AGT")
         self.assertContains(response, "Sin tarjeta vinculada")
 
     def test_investor_panel_includes_selected_non_featured_asset_in_opportunities(self):
@@ -383,9 +492,13 @@ class InvestorPanelTests(TestCase):
         response = self.client.get(reverse("investor_panel"), data={"asset": self.asset.code})
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["total_available_tokens"], 80)
-        self.assertContains(response, 'data-available-tokens="80"')
-        self.assertContains(response, "Máximo disponible ahora: 80 tokens AGT en activos abiertos.")
+        expected_available_tokens = sum(
+            _get_effective_token_state(asset)["tokens_available"]
+            for asset in TokenizedAsset.objects.select_related("asset").filter(asset__status=BiologicalAsset.AVAILABLE)
+        )
+        self.assertEqual(response.context["total_available_tokens"], expected_available_tokens)
+        self.assertContains(response, f'data-available-tokens="{expected_available_tokens}"')
+        self.assertContains(response, f"Máximo disponible ahora: {expected_available_tokens} tokens AGT en activos abiertos.")
 
     def test_investor_panel_summary_participation_is_expressed_as_percentage(self):
         self.client.login(username="paneluser", password="ClaveSegura123*")

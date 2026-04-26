@@ -241,6 +241,14 @@ function updateRoundFundingProgress(current, target, units) {
     var tabs = tabsRoot ? tabsRoot.querySelectorAll('[data-auth-target]') : [];
     var panels = document.querySelectorAll('[data-auth-panel]');
     var switchButtons = document.querySelectorAll('.agro-access__switch[data-auth-target]');
+    var authForms = document.querySelectorAll('[data-auth-form]');
+    var feedbackRoot = document.getElementById('agro-auth-feedback');
+    var readyState = document.querySelector('[data-auth-ready]');
+    var readyEmail = readyState ? readyState.querySelector('[data-auth-ready-email]') : null;
+    var accessTitle = document.getElementById('agro-access-title');
+    var accessDescription = document.getElementById('agro-access-description');
+    var accessAssist = document.querySelector('.agro-access__assist');
+    var accessTopLink = document.querySelector('.agro-access__card-top .agro-access__link');
 
     if (!panels.length) return;
 
@@ -284,6 +292,191 @@ function updateRoundFundingProgress(current, target, units) {
     switchButtons.forEach(function (button) {
         button.addEventListener('click', function () {
             activate(button.getAttribute('data-auth-target'));
+        });
+    });
+
+    function escapeHtml(value) {
+        return String(value || '').replace(/[&<>"']/g, function (char) {
+            return {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            }[char];
+        });
+    }
+
+    function renderGlobalFeedback(type, message, redirectUrl) {
+        if (!feedbackRoot) return;
+
+        var className = type === 'success' ? 'agro-access__feedback--success' : 'agro-access__feedback--error';
+        var action = redirectUrl
+            ? '<a class="agro-access__feedback-link" href="' + escapeHtml(redirectUrl) + '">Ir al panel</a>'
+            : '';
+
+        feedbackRoot.innerHTML = '<div class="agro-access__feedback ' + className + '" role="alert">' + escapeHtml(message) + action + '</div>';
+    }
+
+    function renderReadyState(payload) {
+        var user = payload.user || {};
+        var userName = user.name || 'tu perfil';
+        var userEmail = user.email || '';
+        var panelUrl = payload.redirect_url || (readyState ? readyState.getAttribute('data-panel-url') : '');
+
+        if (accessTitle) {
+            accessTitle.textContent = 'Tu perfil AgroTech esta listo';
+        }
+
+        if (accessDescription) {
+            accessDescription.innerHTML = 'Ya iniciaste sesion como <strong>' + escapeHtml(userName) + '</strong>. Puedes continuar directamente al panel del inversionista para calcular y comprar tokens.';
+        }
+
+        if (feedbackRoot) {
+            feedbackRoot.innerHTML = '';
+        }
+
+        if (readyEmail) {
+            readyEmail.textContent = userEmail ? 'Sesion activa con ' + userEmail + '.' : (payload.message || 'Cuenta creada correctamente.');
+        }
+
+        if (accessAssist) {
+            accessAssist.hidden = true;
+        }
+
+        panels.forEach(function (panel) {
+            panel.classList.remove('is-active');
+            panel.hidden = true;
+        });
+
+        if (readyState) {
+            readyState.hidden = false;
+            readyState.querySelectorAll('a[href]').forEach(function (link) {
+                if (link.classList.contains('btn-style-twelve') && panelUrl) {
+                    link.setAttribute('href', panelUrl);
+                }
+            });
+            readyState.focus({ preventScroll: true });
+        }
+
+        if (accessTopLink && panelUrl) {
+            accessTopLink.textContent = 'Abrir panel';
+            accessTopLink.setAttribute('href', panelUrl);
+        }
+    }
+
+    function clearFormErrors(form) {
+        form.querySelectorAll('.agro-access__feedback--error[id$="-error"], .agro-access__feedback--summary').forEach(function (errorEl) {
+            errorEl.remove();
+        });
+
+        form.querySelectorAll('.field-inner--error').forEach(function (fieldEl) {
+            fieldEl.classList.remove('field-inner--error');
+        });
+
+        form.querySelectorAll('[aria-invalid="true"]').forEach(function (input) {
+            input.removeAttribute('aria-invalid');
+
+            var describedBy = (input.getAttribute('aria-describedby') || '')
+                .split(/\s+/)
+                .filter(function (id) {
+                    return id && !/-error$/.test(id);
+                })
+                .join(' ');
+
+            if (describedBy) {
+                input.setAttribute('aria-describedby', describedBy);
+            } else {
+                input.removeAttribute('aria-describedby');
+            }
+        });
+    }
+
+    function renderFieldErrors(form, errors) {
+        Object.keys(errors || {}).forEach(function (fieldName) {
+            if (fieldName === '__all__') {
+                renderGlobalFeedback('error', errors[fieldName].join(' '));
+                return;
+            }
+
+            var input = form.querySelector('[name="' + fieldName + '"]');
+            if (!input) return;
+
+            var fieldInner = input.closest('.field-inner');
+            var errorId = input.id ? input.id + '-error' : 'agro-auth-' + fieldName + '-error';
+            var errorEl = document.createElement('div');
+            errorEl.className = 'agro-access__feedback agro-access__feedback--error';
+            errorEl.id = errorId;
+            errorEl.setAttribute('role', 'alert');
+            errorEl.textContent = errors[fieldName].join(', ');
+
+            if (fieldInner) {
+                fieldInner.classList.add('field-inner--error');
+                fieldInner.insertAdjacentElement('afterend', errorEl);
+            } else {
+                input.insertAdjacentElement('afterend', errorEl);
+            }
+
+            input.setAttribute('aria-invalid', 'true');
+            var describedBy = (input.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+            if (describedBy.indexOf(errorId) === -1) {
+                describedBy.push(errorId);
+                input.setAttribute('aria-describedby', describedBy.join(' '));
+            }
+        });
+    }
+
+    authForms.forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            var submitButton = form.querySelector('[type="submit"]');
+            clearFormErrors(form);
+            if (feedbackRoot) feedbackRoot.innerHTML = '';
+
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.setAttribute('aria-busy', 'true');
+            }
+
+            fetch(form.action || window.location.href, {
+                method: 'POST',
+                body: new FormData(form),
+                credentials: 'same-origin',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+                .then(function (response) {
+                    return response.json().then(function (payload) {
+                        return {
+                            ok: response.ok,
+                            payload: payload
+                        };
+                    });
+                })
+                .then(function (result) {
+                    var payload = result.payload || {};
+
+                    if (!result.ok || !payload.success) {
+                        renderGlobalFeedback('error', payload.message || 'Revisa los campos marcados.');
+                        renderFieldErrors(form, payload.errors || {});
+                        return;
+                    }
+
+                    renderReadyState(payload);
+                    form.reset();
+                })
+                .catch(function () {
+                    renderGlobalFeedback('error', 'No pudimos enviar el formulario. Intenta nuevamente.');
+                })
+                .finally(function () {
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.removeAttribute('aria-busy');
+                    }
+                });
         });
     });
 })();

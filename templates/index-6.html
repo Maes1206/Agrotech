@@ -1270,16 +1270,33 @@
                                 <a href="#faqs-section" class="agro-access__hint-link">Necesito ayuda para ingresar</a>
                             </div>
 
-                            {% if messages %}
+                            <div class="agro-access__ajax-feedback" id="agro-auth-feedback" aria-live="polite">
+                            {% if active_auth_mode == 'register' and register_form.errors %}
+                                <div class="agro-access__feedback agro-access__feedback--error" role="alert">
+                                    No pudimos crear la cuenta. Revisa los campos marcados.
+                                </div>
+                            {% elif messages %}
                                 {% for message in messages %}
                                 <div class="agro-access__feedback {% if message.tags == 'success' %}agro-access__feedback--success{% else %}agro-access__feedback--error{% endif %}">
                                     {{ message }}
                                 </div>
                                 {% endfor %}
                             {% endif %}
+                            </div>
+
+                            <div class="agro-access__ready" id="agro-auth-ready" data-auth-ready hidden tabindex="-1" data-panel-url="{% url 'investor_panel' %}" data-opportunities-url="#team-members">
+                                <div class="agro-access__feedback agro-access__feedback--success" data-auth-ready-email>
+                                    Sesion activa.
+                                </div>
+                                <div class="agro-access__actions">
+                                    <a href="{% url 'investor_panel' %}" class="theme-btn btn-style-twelve"><span class="btn-title">Ir al panel del inversionista</span></a>
+                                    <a href="#team-members" class="theme-btn btn-style-eight"><span class="txt">Explorar oportunidades</span></a>
+                                </div>
+                                <div class="agro-access__note">Desde el panel puedes calcular BTC a AGT, comprar tokens y revisar tu portafolio actualizado.</div>
+                            </div>
 
                             <div class="agro-access__panel{% if active_auth_mode != 'register' %} is-active{% endif %}" id="agro-auth-panel-login" data-auth-panel="login" role="tabpanel" aria-labelledby="agro-auth-tab-login"{% if active_auth_mode == 'register' %} hidden{% endif %}>
-                                <form method="post" action="#contact-section" class="agro-access__form default-form" aria-describedby="agro-access-description">
+                                <form method="post" action="" class="agro-access__form default-form" aria-describedby="agro-access-description" data-auth-form="login" novalidate>
                                     {% csrf_token %}
                                     <input type="hidden" name="auth_mode" value="login">
                                     {% if login_form.non_field_errors %}
@@ -1328,38 +1345,47 @@
                             </div>
 
                             <div class="agro-access__panel{% if active_auth_mode == 'register' %} is-active{% endif %}" id="agro-auth-panel-register" data-auth-panel="register" role="tabpanel" aria-labelledby="agro-auth-tab-register"{% if active_auth_mode != 'register' %} hidden{% endif %}>
-                                <form method="post" action="#contact-section" class="agro-access__form default-form" aria-describedby="agro-access-description">
+                                <form method="post" action="" class="agro-access__form default-form" aria-describedby="agro-access-description agro-register-help" data-auth-form="register" novalidate>
                                     {% csrf_token %}
                                     <input type="hidden" name="auth_mode" value="register">
+                                    {% if register_form.non_field_errors %}
+                                    <div class="agro-access__feedback agro-access__feedback--error" role="alert">
+                                        {% for error in register_form.non_field_errors %}{{ error }}{% endfor %}
+                                    </div>
+                                    {% endif %}
+                                    <div class="agro-access__helper" id="agro-register-help">
+                                        Usa tu nombre completo, un correo activo y una contrasena de minimo 8 caracteres que no sea comun ni completamente numerica.
+                                    </div>
                                     <div class="row clearfix">
                                         <div class="form-group col-lg-12 col-md-12 col-sm-12">
                                             <label class="field-label" for="agro-register-name">Nombre completo</label>
-                                            <div class="field-inner">
+                                            <div class="field-inner{% if register_form.name.errors %} field-inner--error{% endif %}">
                                                 <span class="alt-icon fa-solid fa-user"></span>
-                                                <input id="agro-register-name" type="text" name="name" value="{{ register_form.name.value|default:'' }}" placeholder="Ej. Laura Perez" autocomplete="name" required="">
+                                                <input id="agro-register-name" type="text" name="name" value="{{ register_form.name.value|default:'' }}" placeholder="Ej. Laura Perez" autocomplete="name" required=""{% if register_form.name.errors %} aria-describedby="agro-register-name-error" aria-invalid="true"{% endif %}>
                                             </div>
                                             {% if register_form.name.errors %}
-                                            <div class="agro-access__feedback agro-access__feedback--error">{{ register_form.name.errors|join:", " }}</div>
+                                            <div class="agro-access__feedback agro-access__feedback--error" id="agro-register-name-error" role="alert">{{ register_form.name.errors|join:", " }}</div>
                                             {% endif %}
                                         </div>
                                         <div class="form-group col-lg-12 col-md-12 col-sm-12">
                                             <label class="field-label" for="agro-register-email">Correo electr&oacute;nico</label>
-                                            <div class="field-inner">
+                                            <div class="field-inner{% if register_form.email.errors %} field-inner--error{% endif %}">
                                                 <span class="alt-icon far fa-envelope"></span>
-                                                <input id="agro-register-email" type="email" name="email" value="{{ register_form.email.value|default:'' }}" placeholder="tu@correo.com" autocomplete="email" inputmode="email" required="">
+                                                <input id="agro-register-email" type="email" name="email" value="{{ register_form.email.value|default:'' }}" placeholder="tu@correo.com" autocomplete="email" inputmode="email" required=""{% if register_form.email.errors %} aria-describedby="agro-register-email-error" aria-invalid="true"{% endif %}>
                                             </div>
                                             {% if register_form.email.errors %}
-                                            <div class="agro-access__feedback agro-access__feedback--error">{{ register_form.email.errors|join:", " }}</div>
+                                            <div class="agro-access__feedback agro-access__feedback--error" id="agro-register-email-error" role="alert">{{ register_form.email.errors|join:", " }}</div>
                                             {% endif %}
                                         </div>
                                         <div class="form-group col-lg-12 col-md-12 col-sm-12">
                                             <label class="field-label" for="agro-register-password">Contrase&ntilde;a</label>
-                                            <div class="field-inner">
+                                            <div class="field-inner{% if register_form.password.errors %} field-inner--error{% endif %}">
                                                 <span class="alt-icon fa-solid fa-lock"></span>
-                                                <input id="agro-register-password" type="password" name="password" placeholder="Crea una contrase&ntilde;a segura" autocomplete="new-password" required="">
+                                                <input id="agro-register-password" type="password" name="password" placeholder="Crea una contrase&ntilde;a segura" autocomplete="new-password" required="" minlength="8" aria-describedby="agro-register-password-help{% if register_form.password.errors %} agro-register-password-error{% endif %}"{% if register_form.password.errors %} aria-invalid="true"{% endif %}>
                                             </div>
+                                            <div class="agro-access__helper" id="agro-register-password-help">Minimo 8 caracteres. Evita claves como 12345678, password o tu correo.</div>
                                             {% if register_form.password.errors %}
-                                            <div class="agro-access__feedback agro-access__feedback--error">{{ register_form.password.errors|join:", " }}</div>
+                                            <div class="agro-access__feedback agro-access__feedback--error" id="agro-register-password-error" role="alert">{{ register_form.password.errors|join:", " }}</div>
                                             {% endif %}
                                         </div>
                                         <div class="form-group col-lg-12 col-md-12 col-sm-12">
@@ -1441,7 +1467,7 @@
 <script src="https://unpkg.com/lightweight-charts@5.0.0/dist/lightweight-charts.standalone.production.js"></script>
 <script src="{% static 'js/agrotech-token-chart.js' %}"></script>
 <!-- Template scripts -->
-<script src="{% static 'js/index-6.js' %}?v=20260418-2"></script>
+<script src="{% static 'js/index-6.js' %}?v=20260426-2"></script>
 </body>
 </html>
 

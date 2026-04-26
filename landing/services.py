@@ -3,11 +3,13 @@ from decimal import Decimal
 import hashlib
 import secrets
 
-from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
 from .models import BlockchainRecord, DigitalContract, TokenHolding, TokenTransaction, TokenizedAsset, Wallet
+
+
+LEGACY_DEMO_WALLET_TOKENS = 23
 
 
 @dataclass
@@ -24,14 +26,26 @@ class BuyTokensResult:
     blockchain_record: BlockchainRecord | None = None
 
 
+def _reset_unmodified_legacy_demo_balance(wallet):
+    if wallet.agt_balance != LEGACY_DEMO_WALLET_TOKENS or wallet.physical_agt_balance:
+        return wallet
+
+    if not wallet.created_at or not wallet.updated_at:
+        return wallet
+
+    if abs((wallet.updated_at - wallet.created_at).total_seconds()) > 0.001:
+        return wallet
+
+    wallet.agt_balance = 0
+    wallet.save(update_fields=["agt_balance", "updated_at"])
+    return wallet
+
+
 def ensure_wallet(user):
-    wallet, created = Wallet.objects.get_or_create(
-        user=user,
-        defaults={"agt_balance": settings.AGROTECH_DEMO_WALLET_TOKENS},
-    )
+    wallet, created = Wallet.objects.get_or_create(user=user)
     if created:
         return wallet
-    return wallet
+    return _reset_unmodified_legacy_demo_balance(wallet)
 
 
 def top_up_wallet(user, quantity):
@@ -41,7 +55,9 @@ def top_up_wallet(user, quantity):
     with transaction.atomic():
         wallet = Wallet.objects.select_for_update().filter(user=user).first()
         if not wallet:
-            wallet = Wallet.objects.create(user=user, agt_balance=settings.AGROTECH_DEMO_WALLET_TOKENS)
+            wallet = Wallet.objects.create(user=user)
+        else:
+            wallet = _reset_unmodified_legacy_demo_balance(wallet)
 
         wallet.agt_balance += quantity
         wallet.save(update_fields=["agt_balance", "updated_at"])
@@ -170,7 +186,9 @@ def invest_with_agt_wallet(user, tokenized_asset, quantity):
     with transaction.atomic():
         wallet = Wallet.objects.select_for_update().filter(user=user).first()
         if not wallet:
-            wallet = Wallet.objects.create(user=user, agt_balance=settings.AGROTECH_DEMO_WALLET_TOKENS)
+            wallet = Wallet.objects.create(user=user)
+        else:
+            wallet = _reset_unmodified_legacy_demo_balance(wallet)
 
         locked_asset = (
             TokenizedAsset.objects.select_for_update()

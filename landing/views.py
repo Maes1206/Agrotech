@@ -8,6 +8,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login
+from django.db import IntegrityError, transaction
 from django.db.models import Count, Sum
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -151,14 +152,16 @@ DEMO_TOKEN_STATE_OVERRIDES = {
     },
 }
 
-TOKEN_FACE_VALUE_COP = Decimal("100000")
+TOKEN_FACE_VALUE_COP = Decimal("500000")
 
 
 def _build_token_market_metrics(total_tokens=0, tokens_sold=0, token_price_cop=TOKEN_FACE_VALUE_COP):
     safe_total_tokens = max(int(total_tokens or 0), 0)
     safe_tokens_sold = max(0, min(safe_total_tokens, int(tokens_sold or 0)))
     tokens_available = max(safe_total_tokens - safe_tokens_sold, 0)
-    safe_token_price = Decimal(token_price_cop or 0)
+    safe_token_price = Decimal(token_price_cop if token_price_cop not in (None, "") else TOKEN_FACE_VALUE_COP)
+    if safe_token_price <= 0:
+        safe_token_price = TOKEN_FACE_VALUE_COP
 
     return {
         "total_tokens": safe_total_tokens,
@@ -301,6 +304,17 @@ def _build_home_context(active_auth_mode="login", login_form=None, register_form
     }
 
 
+def _is_ajax_auth_request(request):
+    return request.headers.get("x-requested-with") == "XMLHttpRequest"
+
+
+def _form_error_payload(form):
+    return {
+        field: [str(error) for error in errors]
+        for field, errors in form.errors.items()
+    }
+
+
 def _build_investor_quote(btc_amount, tokenized_asset):
     btc_usd_rate = Decimal(str(settings.AGROTECH_DEMO_BTC_USD))
     btc_cop_rate = Decimal(str(settings.AGROTECH_DEMO_BTC_COP))
@@ -315,15 +329,19 @@ def _build_investor_quote(btc_amount, tokenized_asset):
         estimated_tokens = 0
 
     spendable_cop = (Decimal(estimated_tokens) * tokenized_asset.token_price).quantize(Decimal("0.01"))
+    spendable_btc = (spendable_cop / btc_cop_rate).quantize(Decimal("0.000001"), rounding=ROUND_DOWN) if spendable_cop else Decimal("0.000000")
     spendable_usd = (spendable_cop / btc_cop_rate * btc_usd_rate).quantize(Decimal("0.01")) if spendable_cop else Decimal("0.00")
 
     return {
         "btc_amount": btc_amount.quantize(Decimal("0.000001")),
         "btc_usd_rate": btc_usd_rate.quantize(Decimal("0.01")),
         "btc_cop_rate": btc_cop_rate.quantize(Decimal("0.01")),
-        "equivalent_usd": equivalent_usd,
-        "equivalent_cop": equivalent_cop,
+        "raw_equivalent_usd": equivalent_usd,
+        "raw_equivalent_cop": equivalent_cop,
+        "equivalent_usd": spendable_usd,
+        "equivalent_cop": spendable_cop,
         "estimated_tokens": estimated_tokens,
+        "spendable_btc": spendable_btc,
         "spendable_cop": spendable_cop,
         "spendable_usd": spendable_usd,
         "can_buy": estimated_tokens >= 1 and estimated_tokens <= tokenized_asset.tokens_available,
@@ -707,6 +725,7 @@ def _build_ledger_context(user):
 def home(request):
     if request.method == "POST":
         auth_mode = request.POST.get("auth_mode", "login")
+        is_ajax_auth = _is_ajax_auth_request(request)
 
         if auth_mode == "register":
             register_form = RegisterForm(request.POST)
@@ -723,19 +742,50 @@ def home(request):
                     username = f"{base_username[:130]}{suffix}"
                     suffix += 1
 
-                user = User.objects.create_user(
-                    username=username,
-                    email=email,
-                    password=password,
-                    first_name=first_name.strip(),
-                    last_name=last_name.strip(),
-                    is_active=True,
-                    is_verified=True,
+                try:
+                    with transaction.atomic():
+                        user = User.objects.create_user(
+                            username=username,
+                            email=email,
+                            password=password,
+                            first_name=first_name.strip(),
+                            last_name=last_name.strip(),
+                            is_active=True,
+                            is_verified=True,
+                        )
+                except IntegrityError:
+                    register_form.add_error(
+                        "email",
+                        "No pudimos crear la cuenta porque ese correo ya esta registrado.",
+                    )
+                else:
+                    _ensure_investor_profile(user)
+                    login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+                    success_message = "Cuenta creada correctamente. Ya puedes invertir en AgroTech."
+                    if is_ajax_auth:
+                        return JsonResponse(
+                            {
+                                "success": True,
+                                "message": success_message,
+                                "redirect_url": reverse("investor_panel"),
+                                "user": {
+                                    "name": user.first_name or user.username,
+                                    "email": user.email,
+                                },
+                            }
+                        )
+                    messages.success(request, success_message)
+                    return redirect("investor_panel")
+
+            if is_ajax_auth:
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "message": "No pudimos crear la cuenta. Revisa los campos marcados.",
+                        "errors": _form_error_payload(register_form),
+                    },
+                    status=400,
                 )
-                _ensure_investor_profile(user)
-                login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-                messages.success(request, "Cuenta creada correctamente. Ya puedes invertir en AgroTech.")
-                return redirect("investor_panel")
 
             return render(
                 request,
@@ -758,9 +808,32 @@ def home(request):
                 if not login_form.cleaned_data.get("remember"):
                     request.session.set_expiry(0)
                 _ensure_investor_profile(user)
-                messages.success(request, f"Bienvenido, {user.first_name or user.username}.")
+                success_message = f"Bienvenido, {user.first_name or user.username}."
+                messages.success(request, success_message)
+                if is_ajax_auth:
+                    return JsonResponse(
+                        {
+                            "success": True,
+                            "message": success_message,
+                            "redirect_url": reverse("investor_panel"),
+                            "user": {
+                                "name": user.first_name or user.username,
+                                "email": user.email,
+                            },
+                        }
+                    )
                 return redirect("investor_panel")
             login_form.add_error(None, "Correo o contraseña incorrectos.")
+
+        if is_ajax_auth:
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": "No pudimos iniciar sesion. Revisa los campos marcados.",
+                    "errors": _form_error_payload(login_form),
+                },
+                status=400,
+            )
 
         return render(
             request,
