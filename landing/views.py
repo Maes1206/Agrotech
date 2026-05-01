@@ -7,7 +7,7 @@ import re
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth import login
+from django.contrib.auth import login, logout
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Sum
 from django.http import HttpResponse, JsonResponse
@@ -34,6 +34,18 @@ from .services import buy_tokens, ensure_wallet, invest_with_agt_wallet, top_up_
 
 
 LINKED_CARD_SESSION_KEY = "agrotech_linked_card"
+
+
+def _build_demo_btc_market_feed():
+    btc_cop_rate = Decimal(str(getattr(settings, "AGROTECH_DEMO_BTC_COP", 0) or 0)).quantize(Decimal("0.01"))
+    change_percent = Decimal(str(getattr(settings, "AGROTECH_DEMO_BTC_CHANGE_PERCENT", "2.40") or "2.40")).quantize(Decimal("0.01"))
+    return {
+        "symbol": "BTC/COP",
+        "price_cop": btc_cop_rate,
+        "change_percent": change_percent,
+        "updated_at": timezone.now(),
+        "is_demo": True,
+    }
 
 
 def _asset_image_path(asset):
@@ -432,6 +444,13 @@ def _build_wallet_snapshot(user, portfolio=None, transactions=None):
     portfolio_items = list(portfolio)
     transaction_items = list(transactions)
     total_invested = sum((item.total_amount for item in transaction_items), Decimal("0.00"))
+    wallet_tokens = wallet.agt_balance
+    physical_tokens = wallet.physical_agt_balance
+    wallet_total_tokens = max(wallet_tokens, physical_tokens)
+    wallet_available_cop = Decimal(wallet.equivalent_cop)
+    portfolio_value = sum(
+        (Decimal(holding.quantity) * holding.tokenized_asset.token_price) for holding in portfolio_items
+    )
     estimated_return_value = sum(
         (
             Decimal(holding.quantity)
@@ -442,24 +461,25 @@ def _build_wallet_snapshot(user, portfolio=None, transactions=None):
         for holding in portfolio_items
     )
     average_return_pct = (
-        (estimated_return_value / total_invested * Decimal("100")).quantize(Decimal("0.01"))
-        if total_invested
+        (estimated_return_value / portfolio_value * Decimal("100")).quantize(Decimal("0.01"))
+        if portfolio_value
         else Decimal("0.00")
     )
 
     return {
         "wallet": wallet,
-        "tokens_available": wallet.agt_balance,
-        "physical_tokens": wallet.physical_agt_balance,
+        "tokens_available": wallet_tokens,
+        "wallet_total_tokens": wallet_total_tokens,
+        "physical_tokens": physical_tokens,
         "physical_wallet_synced_at": wallet.physical_wallet_synced_at,
-        "equivalent_cop": Decimal(wallet.equivalent_cop),
-        "equivalent_cop_compact": _format_compact_millions(wallet.equivalent_cop),
+        "equivalent_cop": wallet_available_cop,
+        "equivalent_cop_compact": _format_compact_millions(wallet_available_cop),
         "portfolio_assets": len(portfolio_items),
         "total_invested": total_invested,
         "total_invested_compact": _format_compact_millions(total_invested),
-        "portfolio_value": sum(
-            (Decimal(holding.quantity) * holding.tokenized_asset.token_price) for holding in portfolio_items
-        ),
+        "invested_capital": portfolio_value,
+        "invested_capital_compact": _format_compact_millions(portfolio_value),
+        "portfolio_value": portfolio_value,
         "estimated_return_pct": average_return_pct,
     }
 
@@ -560,9 +580,11 @@ def _serialize_wallet_snapshot(snapshot):
             if snapshot["physical_wallet_synced_at"]
             else None
         ),
+        "wallet_total_tokens": snapshot["wallet_total_tokens"],
         "equivalent_cop": f"{snapshot['equivalent_cop']:.0f}",
         "portfolio_assets": snapshot["portfolio_assets"],
         "total_invested": f"{snapshot['total_invested']:.0f}",
+        "invested_capital": f"{snapshot['invested_capital']:.0f}",
         "portfolio_value": f"{snapshot['portfolio_value']:.0f}",
         "estimated_return_pct": f"{snapshot['estimated_return_pct']:.2f}",
     }
@@ -1103,6 +1125,27 @@ def wallet_nfc_sync(request):
     )
 
 
+def market_btc_cop(request):
+    market_feed = _build_demo_btc_market_feed()
+    return JsonResponse(
+        {
+            "symbol": market_feed["symbol"],
+            "price_cop": float(market_feed["price_cop"]),
+            "change_percent": float(market_feed["change_percent"]),
+            "updated_at": market_feed["updated_at"].isoformat(),
+            "is_demo": market_feed["is_demo"],
+        }
+    )
+
+
+@login_required
+@require_POST
+def logout_user(request):
+    logout(request)
+    messages.success(request, "Sesion cerrada correctamente.")
+    return redirect("home")
+
+
 @login_required
 @ensure_csrf_cookie
 def investor_panel(request):
@@ -1111,13 +1154,16 @@ def investor_panel(request):
         .filter(asset__status=BiologicalAsset.AVAILABLE)
         .order_by("asset__display_order", "asset__name")
     )
-    total_available_tokens = sum(
-        _get_effective_token_state(asset)["tokens_available"]
-        for asset in available_assets
-    )
-    total_available_capital = sum(
-        _get_effective_token_state(asset)["capital_available"]
-        for asset in available_assets
+    market_states = [_get_effective_token_state(asset) for asset in available_assets]
+    total_available_tokens = sum(state["tokens_available"] for state in market_states)
+    total_available_capital = sum(state["capital_available"] for state in market_states)
+    market_total_tokens = sum(state["total_tokens"] for state in market_states)
+    market_tokens_sold = sum(state["tokens_sold"] for state in market_states)
+    market_active_assets = sum(1 for state in market_states if state["tokens_available"] > 0)
+    market_funded_pct = (
+        (Decimal(market_tokens_sold) / Decimal(market_total_tokens) * Decimal("100")).quantize(Decimal("0.01"))
+        if market_total_tokens
+        else Decimal("0.00")
     )
     selected_asset_code = (
         request.POST.get("selected_asset_code")
@@ -1130,6 +1176,7 @@ def investor_panel(request):
     ) or next((asset for asset in available_assets if asset.tokens_available > 0), None) or (available_assets[0] if available_assets else None)
 
     if not selected_asset:
+        btc_market_feed = _build_demo_btc_market_feed()
         return render(
             request,
             "investor-panel.html",
@@ -1138,6 +1185,8 @@ def investor_panel(request):
                 "selected_asset": None,
                 "portfolio": [],
                 "transactions": [],
+                "demo_btc_cop_rate": settings.AGROTECH_DEMO_BTC_COP,
+                "demo_btc_change_percent": btc_market_feed["change_percent"],
             },
         )
 
@@ -1264,6 +1313,7 @@ def investor_panel(request):
         holding_quantity=selected_asset_holding.quantity if selected_asset_holding else 0,
         total_invested=selected_asset_total_invested,
     )
+    btc_market_feed = _build_demo_btc_market_feed()
     recent_contracts = (
         DigitalContract.objects.select_related("tokenized_asset__asset", "blockchain_record")
         .filter(user=request.user, transaction__transaction_type=TokenTransaction.WALLET_BUY)
@@ -1279,9 +1329,14 @@ def investor_panel(request):
         "agrotech_token_price_cop": settings.AGROTECH_TOKEN_PRICE_COP,
         "demo_btc_usd_rate": settings.AGROTECH_DEMO_BTC_USD,
         "demo_btc_cop_rate": settings.AGROTECH_DEMO_BTC_COP,
+        "demo_btc_change_percent": btc_market_feed["change_percent"],
         "total_available_tokens": total_available_tokens,
         "total_available_capital": total_available_capital,
         "total_available_capital_compact": _format_compact_millions(total_available_capital),
+        "market_total_tokens": market_total_tokens,
+        "market_tokens_sold": market_tokens_sold,
+        "market_active_assets": market_active_assets,
+        "market_funded_pct": market_funded_pct,
         "wallet_balance_cop": wallet_balance_cop,
         "wallet_balance_btc": wallet_balance_btc,
         "portfolio_balance_cop": portfolio_balance_cop,

@@ -7,6 +7,8 @@ from .views import (
     home,
     invest_asset_tokens,
     investor_panel,
+    logout_user,
+    market_btc_cop,
     purchase_asset_tokens,
     wallet_nfc_payload,
     wallet_nfc_sync,
@@ -21,6 +23,8 @@ urlpatterns = [
     path('panel/blockchain/', blockchain_ledger, name='blockchain_ledger'),
     path('panel/certificados/<str:certificate_id>/pdf/', download_digital_certificate, name='download_digital_certificate'),
     path('panel/inversionista/', investor_panel, name='investor_panel'),
+    path('cerrar-sesion/', logout_user, name='logout'),
+    path('api/market/btc-cop/', market_btc_cop, name='market_btc_cop'),
     path('panel/wallet-fisica/nfc/payload/', wallet_nfc_payload, name='wallet_nfc_payload'),
     path('panel/wallet-fisica/nfc/sync/', wallet_nfc_sync, name='wallet_nfc_sync'),
 ]

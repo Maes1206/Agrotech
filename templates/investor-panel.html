@@ -10,7 +10,7 @@
 <link href="{% static 'css/style.css' %}" rel="stylesheet">
 <link href="{% static 'css/responsive.css' %}" rel="stylesheet">
 <link href="{% static 'css/investor-panel.css' %}?v=20260422-12" rel="stylesheet">
-<link href="{% static 'css/agrotech-investment.css' %}?v=20260426-1" rel="stylesheet">
+<link href="{% static 'css/agrotech-investment.css' %}?v=20260418-1" rel="stylesheet">
 </head>
 <body>
   <div class="investor-shell">
@@ -639,8 +639,8 @@
                 </div>
                 <div class="agt-investment-summary-grid">
                   <div><span>Precio por token</span><strong data-modal-token-price>$0 COP</strong></div>
-                  <div><span>Wallet AGT</span><strong><span data-modal-wallet-tokens>0</span><small>tokens</small></strong></div>
-                  <div><span>Tokens del activo</span><strong><span data-modal-asset-tokens>0</span><small>disponibles</small></strong></div>
+                  <div><span>Wallet AGT</span><strong><span data-modal-wallet-tokens>0</span> tokens</strong></div>
+                  <div><span>Tokens del activo</span><strong><span data-modal-asset-tokens>0</span> disponibles</strong></div>
                   <div><span>Participantes</span><strong data-modal-participants>0</strong></div>
                 </div>
               </aside>
@@ -667,7 +667,7 @@
                   <article><span>Total equivalente</span><strong data-invest-total-cop>$0 COP</strong></article>
                   <article><span>Participación adquirida</span><strong data-invest-participation>0%</strong></article>
                   <article><span>Rentabilidad estimada</span><strong data-invest-estimated-return>0%</strong></article>
-                  <article><span>Saldo restante AGT</span><strong><span data-invest-remaining-wallet>0</span><small>tokens</small></strong></article>
+                  <article><span>Saldo restante AGT</span><strong data-invest-remaining-wallet>0 tokens</strong></article>
                 </div>
                 <div class="agt-investment-disclaimer">
                   La operación será registrada mediante hash en blockchain. Recibirás un certificado digital de participación y la trazabilidad del activo quedará actualizada en tiempo real.
@@ -737,7 +737,7 @@
                 </div>
                 <div class="checkout-summary__row">
                   <span>Monto BTC</span>
-                  <strong id="checkout-btc">{% if calculation %}{{ calculation.spendable_btc|floatformat:6 }}{% else %}0.000000{% endif %} BTC</strong>
+                  <strong id="checkout-btc">{{ panel_form.btc_amount.value|default:"0.050000" }} BTC</strong>
                 </div>
                 <div class="checkout-summary__row">
                   <span>Total USD</span>
@@ -1562,7 +1562,7 @@
           tokensToTransfer: Math.max(parseInt(quote.estimatedTokens || "0", 10) || 0, 0),
           walletTokens: walletTokens,
           storedTokens: walletTokens,
-          btcAmount: quote.equivalentBtc,
+          btcAmount: quote.btcAmount,
           equivalentUsd: quote.equivalentUsd,
           equivalentCop: quote.equivalentCop,
           custodyStatus: physicalWalletStatus ? physicalWalletStatus.textContent.trim() : "Lista para recibir AGT",
@@ -1932,17 +1932,15 @@
 
       const calculateQuote = function (btcAmount) {
         const amount = Number.isFinite(btcAmount) ? Math.max(btcAmount, 0) : 0;
-        const rawEquivalentCop = amount * btcCopRate;
+        const equivalentUsd = amount * btcUsdRate;
+        const equivalentCop = amount * btcCopRate;
         const tokenPrice = getTokenPriceCop();
         const availableTokens = getAvailableTokens();
-        const estimatedTokens = tokenPrice > 0 ? Math.floor(rawEquivalentCop / tokenPrice) : 0;
-        const equivalentCop = estimatedTokens * tokenPrice;
-        const equivalentBtc = btcCopRate > 0 ? equivalentCop / btcCopRate : 0;
-        const equivalentUsd = btcCopRate > 0 ? equivalentBtc * btcUsdRate : 0;
+        const estimatedTokens = tokenPrice > 0 ? Math.floor(equivalentCop / tokenPrice) : 0;
+  
 
         return {
           btcAmount: amount,
-          equivalentBtc: equivalentBtc,
           equivalentUsd: equivalentUsd,
           equivalentCop: equivalentCop,
           estimatedTokens: estimatedTokens,
@@ -2096,6 +2094,7 @@
       const refreshQuote = function () {
         renderQuote(calculateQuote(getBtcAmount()));
       };
+      
 
       scheduleQuoteRefresh = function () {
         window.clearTimeout(quoteState.debounceTimer);
@@ -2104,7 +2103,7 @@
 
       const syncCheckoutSummary = function () {
         if (btcInput && modalBtc) {
-          modalBtc.textContent = formatBtc(quoteState.quote.equivalentBtc);
+          modalBtc.textContent = formatBtc(quoteState.quote.btcAmount);
         }
 
         if (modalTokens) {
@@ -2507,7 +2506,7 @@
             source: "btc_checkout",
             assetCode: selectedCard ? selectedCard.dataset.assetCode : (selectedAssetCodeInput ? selectedAssetCodeInput.value : ""),
             assetName: selectedCard ? selectedCard.dataset.assetName : (checkoutAssetName ? checkoutAssetName.textContent : "Activo AgroTech"),
-            btcAmount: quoteState.quote.equivalentBtc,
+            btcAmount: quoteState.quote.btcAmount,
             agtAmount: tokens,
             status: "pending",
             operationType: "Compra AGT",
@@ -2528,6 +2527,6 @@
       window.agroTechConfirmCheckout = handleConfirmCheckout;
     });
   </script>
-  <script src="{% static 'js/agrotech-investment.js' %}?v=20260426-2"></script>
+  <script src="{% static 'js/agrotech-investment.js' %}"></script>
 </body>
 </html>

@@ -406,6 +406,9 @@
     document.querySelectorAll("[data-wallet-tokens]").forEach(function (item) {
       item.textContent = snapshot.tokens_available;
     });
+    document.querySelectorAll("[data-wallet-owned-tokens]").forEach(function (item) {
+      item.textContent = snapshot.wallet_total_tokens || snapshot.tokens_available || 0;
+    });
     document.querySelectorAll("[data-wallet-pocket-tokens]").forEach(function (item) {
       item.textContent = snapshot.tokens_available + " AGT";
     });
@@ -416,7 +419,7 @@
       item.textContent = snapshot.portfolio_assets;
     });
     document.querySelectorAll("[data-wallet-total-invested]").forEach(function (item) {
-      item.textContent = formatNumber(snapshot.total_invested);
+      item.textContent = formatNumber(snapshot.invested_capital || snapshot.total_invested);
     });
     document.querySelectorAll("[data-wallet-yield]").forEach(function (item) {
       item.textContent = snapshot.estimated_return_pct;
@@ -426,11 +429,21 @@
   function syncMarketAvailability() {
     let totalTokens = 0;
     let totalCapital = 0;
+    let totalSold = 0;
+    let totalSupply = 0;
+    let activeAssets = 0;
 
     document.querySelectorAll(".investor-opportunity-card[data-asset-code]").forEach(function (card) {
       const tokensAvailable = toInteger(card.dataset.assetTokensAvailable);
+      const tokensSold = toInteger(card.dataset.tokensSold);
+      const totalAssetTokens = toInteger(card.dataset.totalTokens);
       const capitalAvailable = Number(card.dataset.capitalAvailable || 0);
       totalTokens += Math.max(tokensAvailable, 0);
+      totalSold += Math.max(tokensSold, 0);
+      totalSupply += Math.max(totalAssetTokens, 0);
+      if (tokensAvailable > 0) {
+        activeAssets += 1;
+      }
       totalCapital += Number.isFinite(capitalAvailable) ? Math.max(capitalAvailable, 0) : 0;
     });
 
@@ -440,6 +453,15 @@
 
     document.querySelectorAll("[data-market-equivalent]").forEach(function (item) {
       item.textContent = formatCompactValue(totalCapital);
+    });
+
+    document.querySelectorAll("[data-market-assets]").forEach(function (item) {
+      item.textContent = formatNumber(activeAssets);
+    });
+
+    document.querySelectorAll("[data-market-funded-pct]").forEach(function (item) {
+      const pct = totalSupply > 0 ? (totalSold / totalSupply) * 100 : 0;
+      item.textContent = pct.toFixed(2);
     });
   }
 

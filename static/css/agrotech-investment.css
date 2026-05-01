@@ -252,6 +252,130 @@
     line-height: 1.55;
 }
 
+.agt-market-summary {
+    width: min(100%, 1320px);
+    margin: -10px auto 32px;
+    padding: clamp(20px, 2.6vw, 30px);
+    border: 1px solid rgba(28, 111, 60, .12);
+    border-radius: 26px;
+    background:
+        radial-gradient(circle at 12% 0%, rgba(91, 184, 112, .16), transparent 34%),
+        linear-gradient(180deg, rgba(250, 253, 250, .96), rgba(238, 248, 241, .92));
+    box-shadow: 0 18px 46px rgba(21, 47, 31, .10);
+}
+
+.agt-market-summary__head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 18px;
+    align-items: end;
+    margin-bottom: 18px;
+}
+
+.agt-market-summary__head .agt-wallet-summary__eyebrow {
+    color: #1c6f3c;
+}
+
+.agt-market-summary__head h4 {
+    margin: 8px 0 8px;
+    color: #123521;
+    font-size: clamp(22px, 2.4vw, 34px);
+    line-height: 1.08;
+    letter-spacing: -.025em;
+}
+
+.agt-market-summary__head p {
+    max-width: 72ch;
+    margin: 0;
+    color: #5d6d62;
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+.agt-market-summary__cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 46px;
+    padding: 12px 18px;
+    border-radius: 999px;
+    background: #1f7a3f;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: .02em;
+    box-shadow: 0 14px 28px rgba(31, 122, 63, .22);
+    transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+}
+
+.agt-market-summary__cta:hover,
+.agt-market-summary__cta:focus {
+    color: #ffffff;
+    background: #185f32;
+    transform: translateY(-1px);
+    box-shadow: 0 18px 36px rgba(31, 122, 63, .28);
+}
+
+.agt-market-summary__stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.agt-market-summary__stats article {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 152px;
+    padding: 18px;
+    border: 1px solid rgba(48, 134, 77, .12);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, .72);
+    box-shadow: 0 14px 30px rgba(22, 42, 29, .07);
+}
+
+.agt-market-summary__stats article > span {
+    display: block;
+    color: #708076;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.agt-market-summary__stats strong {
+    display: block;
+    color: #153622;
+    font-size: clamp(28px, 2.4vw, 40px);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.035em;
+}
+
+.agt-market-summary__stats small {
+    display: block;
+    margin-top: auto;
+    color: #647368;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.agt-market-summary .agt-stat-card__prefix,
+.agt-market-summary .agt-stat-card__suffix {
+    color: #4e6858;
+}
+
+.agt-market-summary .agt-stat-card__value {
+    display: inline-block;
+    color: #153622;
+    font-size: clamp(23px, 1.8vw, 30px);
+    line-height: .94;
+    font-weight: 800;
+    text-transform: none;
+    letter-spacing: 0;
+    white-space: nowrap;
+}
+
 .agt-card-stats {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -856,12 +980,17 @@
 }
 
 @media (max-width: 1199px) {
-    .agt-wallet-summary {
+    .agt-wallet-summary,
+    .agt-market-summary {
         width: 100%;
     }
 
     .agt-wallet-summary__inner {
         width: 100%;
+    }
+
+    .agt-market-summary__stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .agt-investment-layout {
@@ -879,25 +1008,38 @@
 
 @media (max-width: 767px) {
     .agt-wallet-summary,
+    .agt-market-summary,
     .agt-contract-card,
     .agt-investment-state {
         padding: 18px;
     }
 
     .agt-wallet-summary__hero h3,
+    .agt-market-summary__head h4,
     .agt-investment-aside h4,
     .agt-investment-main__head h5 {
         font-size: 24px;
     }
 
-    .agt-wallet-summary {
+    .agt-wallet-summary,
+    .agt-market-summary {
         margin-bottom: 24px;
         border-radius: 24px;
     }
 
-    .agt-wallet-summary__hero p {
+    .agt-wallet-summary__hero p,
+    .agt-market-summary__head p {
         font-size: 14px;
         line-height: 1.6;
+    }
+
+    .agt-market-summary__head {
+        grid-template-columns: 1fr;
+        align-items: start;
+    }
+
+    .agt-market-summary__cta {
+        width: 100%;
     }
 
     .agt-stat-card {
@@ -913,6 +1055,14 @@
 
     .agt-wallet-summary__stats {
         gap: 14px;
+    }
+
+    .agt-market-summary__stats {
+        grid-template-columns: 1fr;
+    }
+
+    .agt-market-summary__stats article {
+        min-height: 0;
     }
 
     .agt-stat-card__metric {
@@ -973,19 +1123,22 @@
 
 @media (max-width: 575px) {
     .agt-wallet-summary,
+    .agt-market-summary,
     .agt-contract-card,
     .agt-investment-state {
         padding: 16px;
     }
 
     .agt-wallet-summary__hero h3,
+    .agt-market-summary__head h4,
     .agt-investment-aside h4,
     .agt-investment-main__head h5 {
         font-size: 21px;
         line-height: 1.12;
     }
 
-    .agt-wallet-summary__hero p {
+    .agt-wallet-summary__hero p,
+    .agt-market-summary__head p {
         font-size: 13px;
     }
 
@@ -1005,6 +1158,10 @@
     .agt-stat-card {
         padding: 16px;
         gap: 8px;
+    }
+
+    .agt-market-summary__stats article {
+        padding: 16px;
     }
 
     .agt-stat-card strong {

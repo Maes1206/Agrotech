@@ -16,8 +16,14 @@ from .models import (
     UserProfile,
     Wallet,
 )
-from .services import buy_tokens, ensure_wallet
-from .views import _build_asset_snapshot, _build_investor_quote, _build_token_market_metrics, _get_effective_token_state
+from .services import buy_tokens, ensure_wallet, invest_with_agt_wallet
+from .views import (
+    _build_asset_snapshot,
+    _build_investor_quote,
+    _build_token_market_metrics,
+    _build_wallet_snapshot,
+    _get_effective_token_state,
+)
 
 
 class BuyTokensServiceTests(TestCase):
@@ -380,6 +386,43 @@ class InvestorPanelTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'data-capital-available="50000000"')
         self.assertContains(response, "$50.000.000 COP")
+
+    def test_wallet_snapshot_uses_authenticated_user_financial_state(self):
+        wallet = Wallet.objects.get(user=self.user)
+        wallet.agt_balance = 3
+        wallet.physical_agt_balance = 5
+        wallet.save(update_fields=["agt_balance", "physical_agt_balance", "updated_at"])
+        buy_tokens(self.user, self.tokenized_asset, 4)
+
+        snapshot = _build_wallet_snapshot(self.user)
+
+        self.assertEqual(snapshot["wallet_total_tokens"], 5)
+        self.assertEqual(snapshot["tokens_available"], 3)
+        self.assertEqual(snapshot["equivalent_cop"], Decimal("1500000"))
+        self.assertEqual(snapshot["invested_capital"], Decimal("2000000.00"))
+        self.assertEqual(snapshot["portfolio_assets"], 1)
+        self.assertEqual(snapshot["estimated_return_pct"], Decimal("18.00"))
+
+    def test_investor_panel_separates_wallet_state_from_market_totals(self):
+        self.client.login(username="paneluser", password="ClaveSegura123*")
+        wallet = Wallet.objects.get(user=self.user)
+        wallet.agt_balance = 7
+        wallet.save(update_fields=["agt_balance", "updated_at"])
+        invest_with_agt_wallet(self.user, self.tokenized_asset, 4)
+
+        response = self.client.get(reverse("investor_panel"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Estado financiero del inversor")
+        self.assertContains(response, "Mis AGT en wallet")
+        self.assertContains(response, "Saldo disponible")
+        self.assertContains(response, "Capital invertido")
+        self.assertContains(response, "Oportunidades activas del mercado")
+        self.assertContains(response, "Tokens disponibles en plataforma")
+        self.assertContains(response, 'data-wallet-owned-tokens>3</strong>')
+        self.assertEqual(response.context["wallet_snapshot"]["invested_capital"], Decimal("2000000.00"))
+        self.assertEqual(response.context["wallet_snapshot"]["portfolio_assets"], 1)
+        self.assertNotContains(response, "Capital listo para asignar a oportunidades activas")
 
     def test_investor_panel_buy_recharges_wallet_without_updating_portfolio(self):
         self.client.login(username="paneluser", password="ClaveSegura123*")
